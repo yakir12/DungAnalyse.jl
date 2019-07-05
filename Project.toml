@@ -4,6 +4,8 @@ authors = ["yakir12 <12.yakir@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+Databula = "b433fe0e-f647-5e52-b9ef-fe6f0cf5c356"
+DungBase = "bd6f3a87-2f53-57d0-9c4e-5625ef189a5e"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
