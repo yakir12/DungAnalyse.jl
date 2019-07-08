@@ -1,25 +1,49 @@
-using FixedPointNumbers, ColorTypes#, FileIO
-import VideoIO
+abstract type AbstractPAR end
 
-const STEP = Nanosecond(333333333)
+struct PAR <: AbstractPAR
+    value::Rational{UInt32}
+end
 
-timestamps(t::Temporal{WholeVideo, Instantaneous}) = (t.video.file.name, t.time.anchor)
+struct PAR1 <: AbstractPAR
+end
+
+AbstractPAR(x) = isone(x) ? PAR1() : PAR(x)
+
+value(x::PAR) = x.value
+value(_::PAR1) = 1
+
+const Image = Matrix{RGB{Normed{UInt8,8}}}
+
+struct Snapshot{P <: AbstractPAR}
+    img::Image
+    par::P
+end
+
+struct TimeLapse{P <: AbstractPAR}
+    imgs::Vector{Image}
+    par::P
+end
+
+const STEP = Millisecond(333)
+
+timestamps(t::Temporal{WholeVideo, Instantaneous}) = (t.video.file.name, start(t.time))
 
 function timestamps(t::Temporal{FragmentedVideo, Instantaneous})
-    time = t.time.anchor
-    for vf in t.video.files
-        if time ≤ vf.duration
-            return (vf.name, time)
+    t = start(t.time)
+    for vf in files(t.video)
+        d = duration(vf)
+        if t ≤ d
+            return (vf.name, t)
         end
-        time -= vf.duration
+        t -= d
     end
 end
 
-timestamps(t::Temporal{WholeVideo, Prolonged}) = (t.video.file.name, t.time.anchor:STEP:stop(t.time))
+timestamps(t::Temporal{WholeVideo, Prolonged}) = (t.video.file.name, start(t.time):STEP:stop(t.time))
 
 function timestamps(t::Temporal{FragmentedVideo, Prolonged})
-    ranges = Dict{String, StepRange{Nanosecond,Nanosecond}}()
-    t1 = t.time.anchor
+    ranges = Dict{String, StepRange{Millisecond,Millisecond}}()
+    t1 = start(t.time)
     t2 = stop(t.time)
     files = Iterators.Stateful(t.video.files)
     for vf in files
@@ -32,10 +56,10 @@ function timestamps(t::Temporal{FragmentedVideo, Prolonged})
                 t2 -= vf.duration
                 for _vf in files
                     if t2 ≤ _vf.duration
-                        ranges[_vf.name] = Nanosecond(0):STEP:t2
+                        ranges[_vf.name] = Millisecond(0):STEP:t2
                         return ranges
                     end
-                    ranges[_vf.name] = Nanosecond(0):STEP:_vf.duration
+                    ranges[_vf.name] = Millisecond(0):STEP:_vf.duration
                     t2 -= _vf.duration
                 end
             end
@@ -45,57 +69,40 @@ function timestamps(t::Temporal{FragmentedVideo, Prolonged})
     end
 end
 
-# tosecond{T}(t::T) = t/convert(T, Dates.Second(1))
-ns2s(t) = t/Nanosecond(1000000000)
+ms2s(t::Millisecond) = t/Millisecond(1000)
 
-function seekread(f, s)
+function seekread(f, s::Float64)
     seek(f, s)
     read(f)
 end
 
+fetchimages(_::Missing) = missing
 
 function fetchimages(t::Temporal{V, Instantaneous}) where V
     file, time = timestamps(t)
     f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
-    img = seekread(f, ns2s(time))
+    img = seekread(f, ms2s(time))
     sar = VideoIO.aspect_ratio(f)
-    (image = img, sar = sar)
+    Snapshot(img, AbstractPAR(sar))
 end
 
 function fetchimages(t::Temporal{WholeVideo, Prolonged})
     file, times = timestamps(t)
     f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
-    imgs = [seekread(f, ns2s(t)) for t in times]
-    #=imgs = Vector{Matrix{RGB{Normed{UInt8,8}}}}(undef, length(times))
-    for (i, time) in enumerate(times)
-        seek(f, ns2s(time))
-        imgs[i] = read(f)
-    end=#
+    imgs = [seekread(f, ms2s(t)) for t in times]
     sar = VideoIO.aspect_ratio(f)
-    (images = imgs, sar = sar)
+    TimeLapse(imgs, AbstractPAR(sar))
 end
 
 function fetchimages(t::Temporal{FragmentedVideo, Prolonged})
     ft = timestamps(t)
-    # imgs = Vector{Matrix{RGB{Normed{UInt8,8}}}}(undef, sum(length, values(ft)))
-    imgs = []#Vector{Tuple{Vector{Matrix{RGB{Normed{UInt8,8}}}}, }(undef, length(ft))
-    # i = 0
+    imgs = Vector{TimeLapse}(undef, length(ft))
     for (i, (file, times)) in enumerate(ft)
         f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
-        _imgs = [seekread(f, ns2s(t)) for t in times]
+        _imgs = [seekread(f, ms2s(t)) for t in times]
         sar = VideoIO.aspect_ratio(f)
-        imgs[i] = (images = _imgs, sar = sar)
-        #=for time in times
-            # i += 1
-            seek(f, ns2s(time))
-            img = read(f)
-            # push!(imgs, img)
-            # FileIO.save("tmp/$i.jpg", img)
-            imgs[i] = img
-        end=#
+        imgs[i] = TimeLapse(_imgs, AbstractPAR(sar))
     end
-    # f = VideoIO.openvideo(joinpath(Databula.coffeesource, first(keys(ft))))
-    # sar = VideoIO.aspect_ratio(f)
     imgs
 end
 
