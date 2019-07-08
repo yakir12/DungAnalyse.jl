@@ -12,7 +12,7 @@ AbstractPAR(x) = isone(x) ? PAR1() : PAR(x)
 value(x::PAR) = x.value
 value(_::PAR1) = 1
 
-const Image = Matrix{RGB{Normed{UInt8,8}}}
+const Image = PermutedDimsArray{RGB{Normed{UInt8,8}},2,(2, 1),(2, 1),Array{RGB{Normed{UInt8,8}},2}} #{RGB{Normed{UInt8,8}}}
 
 struct Snapshot{P <: AbstractPAR}
     img::Image
@@ -24,7 +24,7 @@ struct TimeLapse{P <: AbstractPAR}
     par::P
 end
 
-const STEP = Millisecond(333)
+const STEP = Millisecond(60)
 
 timestamps(t::Temporal{WholeVideo, Instantaneous}) = (t.video.file.name, start(t.time))
 

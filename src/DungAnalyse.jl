@@ -2,7 +2,7 @@ module DungAnalyse
 
 # Dates, VideoIO, Combinatorics, UUIDs, Observables
 using DungBase, Databula, Serialization, FileIO, Dates
-# using FixedPointNumbers, ColorTypes
+using FixedPointNumbers, ColorTypes
 using Images, CoordinateTransformations, LinearAlgebra
 import VideoIO
 
@@ -32,17 +32,17 @@ function _save(path, extrinsic::Snapshot{PAR})
     FileIO.save(joinpath(path, "extrinsic.jpg"), imgw)
 end
 function _save(path, intrinsic::TimeLapse{PAR1}, counter)
-    for (i, frame) in enumerate(intrinsic.imgs)
+    for (i, img) in enumerate(intrinsic.imgs)
         name = i + counter
-        FileIO.save(joinpath(path, "$j.jpg"), img)
+        FileIO.save(joinpath(path, "$name.jpg"), img)
     end
 end
 function _save(path, intrinsic::TimeLapse{PAR}, counter)
     tfm = LinearMap(Diagonal(SVector(1, par(intrinsic))))
-    for (i, frame) in enumerate(intrinsic.imgs)
-        imgw = warp(frame, tfm)
+    for (i, img) in enumerate(intrinsic.imgs)
+        imgw = warp(img, tfm)
         name = i + counter
-        FileIO.save(joinpath(path, "$j.jpg"), imgw)
+        FileIO.save(joinpath(path, "$name.jpg"), imgw)
     end
 end
 _save(path, intrinsic::TimeLapse) = _save(path, intrinsic, 0)
@@ -55,7 +55,6 @@ function build_calibrations()
         save_calibration_images(c)
     end
 end
-
 
 
 
