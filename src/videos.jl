@@ -9,20 +9,25 @@ end
 
 AbstractPAR(x) = isone(x) ? PAR1() : PAR(x)
 
-value(x::PAR) = x.value
-value(_::PAR1) = 1
+par(x::PAR) = x.value
+par(_::PAR1) = 1//1
 
-const Image = PermutedDimsArray{RGB{Normed{UInt8,8}},2,(2, 1),(2, 1),Array{RGB{Normed{UInt8,8}},2}} #{RGB{Normed{UInt8,8}}}
+const Image = Matrix{RGB{N0f8}}#PermutedDimsArray{RGB{Normed{UInt8,8}},2,(2, 1),(2, 1),Array{RGB{Normed{UInt8,8}},2}} #{RGB{Normed{UInt8,8}}}
 
-struct Snapshot{P <: AbstractPAR}
+abstract type AbstractPhotage end
+
+struct Snapshot{P <: AbstractPAR} <: AbstractPhotage
     img::Image
     par::P
 end
 
-struct TimeLapse{P <: AbstractPAR}
+struct TimeLapse{P <: AbstractPAR} <: AbstractPhotage
     imgs::Vector{Image}
     par::P
 end
+
+par(x::AbstractPhotage) = par(x.par)
+
 
 const STEP = Millisecond(60)
 
@@ -73,7 +78,8 @@ ms2s(t::Millisecond) = t/Millisecond(1000)
 
 function seekread(f, s::Float64)
     seek(f, s)
-    read(f)
+    full = read(f)
+    full[1:2:end, :]
 end
 
 fetchimages(_::Missing) = missing
@@ -82,7 +88,7 @@ function fetchimages(t::Temporal{V, Instantaneous}) where V
     file, time = timestamps(t)
     f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
     img = seekread(f, ms2s(time))
-    sar = VideoIO.aspect_ratio(f)
+    sar = 2VideoIO.aspect_ratio(f)
     Snapshot(img, AbstractPAR(sar))
 end
 
@@ -90,7 +96,7 @@ function fetchimages(t::Temporal{WholeVideo, Prolonged})
     file, times = timestamps(t)
     f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
     imgs = [seekread(f, ms2s(t)) for t in times]
-    sar = VideoIO.aspect_ratio(f)
+    sar = 2VideoIO.aspect_ratio(f)
     TimeLapse(imgs, AbstractPAR(sar))
 end
 
@@ -100,7 +106,7 @@ function fetchimages(t::Temporal{FragmentedVideo, Prolonged})
     for (i, (file, times)) in enumerate(ft)
         f = VideoIO.openvideo(joinpath(Databula.coffeesource, file))
         _imgs = [seekread(f, ms2s(t)) for t in times]
-        sar = VideoIO.aspect_ratio(f)
+        sar = 2VideoIO.aspect_ratio(f)
         imgs[i] = TimeLapse(_imgs, AbstractPAR(sar))
     end
     imgs

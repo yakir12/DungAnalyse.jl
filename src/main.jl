@@ -4,9 +4,9 @@ import DungBase:AbstractTimeLine, Temporal, Board, Calibration, Run, Experiment
 dbpath = "/home/yakir/dungProject/database"
 cofeesource = "/home/yakir/mnt/coffee source"
 using DataDeps, JuliaDB, Dates
-register(DataDep("coffeebeetle2", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
-video = loadtable(datadep"coffeebeetle2/video.csv", indexcols = :video)
-videofile = loadtable(datadep"coffeebeetle2/videofile.csv", indexcols = :file_name)
+register(DataDep("coffeebeetle", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
+video = loadtable(datadep"coffeebeetle/video.csv", indexcols = :video)
+videofile = loadtable(datadep"coffeebeetle/videofile.csv", indexcols = :file_name)
 x = join(video, videofile, rkey = :video)
 function AbstractTimeLine(x)
     n = length(x)
@@ -25,7 +25,7 @@ function AbstractTimeLine(x)
     end
 end
 timeline = groupby(AbstractTimeLine,  x)
-interval = dropmissing(loadtable(datadep"coffeebeetle2/interval.csv", indexcols = :interval), :start)
+interval = dropmissing(loadtable(datadep"coffeebeetle/interval.csv", indexcols = :interval), :start)
 x = join(interval, timeline, lkey = :video)
 function Temporal(x)
     video = x.AbstractTimeLine
@@ -34,8 +34,8 @@ function Temporal(x)
 end
 temporal = Dict(i.interval => Temporal(i) for i in x)
 
-board = loadtable(datadep"coffeebeetle2/board.csv", indexcols = :designation)
-calibration = loadtable(datadep"coffeebeetle2/calibration.csv", indexcols = :calibration)
+board = loadtable(datadep"coffeebeetle/board.csv", indexcols = :designation)
+calibration = loadtable(datadep"coffeebeetle/calibration.csv", indexcols = :calibration)
 x = join(calibration, board, lkey = :board)
 function Calibration(x)
     intrinsic = get(temporal, x.intrinsic, missing)
@@ -46,15 +46,15 @@ function Calibration(x)
 end
 calibration = Dict(i.calibration => Calibration(i) for i in x)
 
-connector = filter(!isempty, loadtable(datadep"coffeebeetle2/poi.csv", indexcols = :poi), select = :calibration)
+connector = filter(!isempty, loadtable(datadep"coffeebeetle/poi.csv", indexcols = :poi), select = :calibration)
 using CSV, Tables
-x = CSV.File(datadep"coffeebeetle2/run.csv", types = Dict(:date => Date)) |> rowtable
+x = CSV.File(datadep"coffeebeetle/run.csv", types = Dict(:date => Date)) |> rowtable
 fname = setdiff(keys(x[1]), (:run, :date, :experiment, :comment))
 x = map(x) do i
     (run = i.run, date = i.date, experiment = i.experiment, comment = i.comment, factors = Dict(s => getfield(i, s) for s in fname))
 end
 x = table(x, pkey = :run)
-experiment = loadtable(datadep"coffeebeetle2/experiment.csv", indexcols = :experiment)
+experiment = loadtable(datadep"coffeebeetle/experiment.csv", indexcols = :experiment)
 x = join(x, experiment, lkey = :experiment)
 x = join(connector, x, lkey = :run, rkey = :run)
 function Run(x)
@@ -74,14 +74,14 @@ data = Dict(i.experiment => i.Experiment for i in t)
 
 
 using Serialization
-serialize(joinpath(datadep"coffeebeetle2", "data"), data)
+serialize(joinpath(datadep"coffeebeetle", "data"), data)
 
 using Revise
 using Serialization
 using DungBase, Dates, UUIDs
 using DataDeps
-register(DataDep("coffeebeetle2", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
-data = deserialize(joinpath(datadep"coffeebeetle2", "data"))
+register(DataDep("coffeebeetle", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
+data = deserialize(joinpath(datadep"coffeebeetle", "data"))
 
 dbpath = "/home/yakir/dungProject/database"
 for (k,v) in data, (i, run) in enumerate(v.runs)
