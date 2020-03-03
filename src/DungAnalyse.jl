@@ -31,14 +31,14 @@ function main(coffeesource)
     end
     # nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
     trackdata = Dict()
-    Threads.@threads for (experimentid, v) in data
-        runs = Run[]
-        for r in v.runs
-            pois = Dict()
-            for (poitype, p) in r.data
-                pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
+    for (experimentid, v) in data
+        runs = Vector{Run}(undef, length(v.runs))
+        Threads.@threads for (i,r) in enumerate(v.runs)
+            pois = Vector{Any}(undef, length(r.data))
+            Threads.@threads for (i, (poitype, p)) in enumerate(r.data)
+                pois[i] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
             end
-            push!(runs, Run(Common(Run(pois, r.metadata)), r.metadata) )
+            runs[i] = Run(Common(Run(Dict(poitype => poi for (poitype, poi) in zip(keys(r.data), pois)), r.metadata)), r.metadata)
         end
         trackdata[experimentid] = Experiment(runs, v.description)
     end
