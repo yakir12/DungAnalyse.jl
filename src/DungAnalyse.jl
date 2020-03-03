@@ -4,13 +4,13 @@ using DungBase, Serialization, Dates, JLSO, DataDeps, ProgressMeter, StaticArray
 
 export main
 
-include("src/ffmpeg.jl")
-include("src/calibrate.jl")
-include("src/smooth.jl")
-include("src/common_methods.jl")
-include("src/quality_report.jl")
-include("src/plotresults.jl")
-include("src/load_from_csv.jl")
+include("ffmpeg.jl")
+include("calibrate.jl")
+include("smooth.jl")
+include("common_methods.jl")
+include("quality_report.jl")
+include("plotresults.jl")
+include("load_from_csv.jl")
 
 function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, I}}) where {C <: Calibration, V <: AbstractTimeLine, I <: Instantaneous}
     xyt = readdlm(joinpath(coffeesource, "pixel", temporal2pixel[Pair(k, p)]))
