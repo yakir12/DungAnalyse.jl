@@ -37,9 +37,11 @@ function main(coffeesource)
         Threads.@threads for i in 1:n
             r = v.runs[i]
             n = length(r.data)
+            poitypes = collect(keys(r.data))
             pois = Vector{Any}(undef, n)
             Threads.@threads for i in 1:n
-                poitype, p = r.data[i]
+                poitype = poitypes[i]
+                p = r.data[poitype]
                 pois[i] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
             end
             runs[i] = Run(Common(Run(Dict(poitype => poi for (poitype, poi) in zip(keys(r.data), pois)), r.metadata)), r.metadata)
