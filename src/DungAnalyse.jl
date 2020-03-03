@@ -24,8 +24,25 @@ end
 
 function main(coffeesource)
     temporal2pixel, data = loaddeomcsv(coffeesource)
-    nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
-    trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+    cs = unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data)
+    nameerror = Dict()
+    Threads.@threads for c in cs
+        nameerror[c] = build_calibration(coffeesource, hash(c), c) 
+    end
+    # nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
+    trackdata = Dict()
+    Threads.@threads for (experimentid, v) in data
+        runs = Run[]
+        for r in v.runs
+            pois = Dict()
+            for (poitype, p) in r.data
+                pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
+            end
+            push!(runs, Run(Common(Run(pois, r.metadata)), r.metadata) )
+        end
+        trackdata[experimentid] = Experiment(runs, v.description)
+    end
+    # trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
     return trackdata
 end
 
