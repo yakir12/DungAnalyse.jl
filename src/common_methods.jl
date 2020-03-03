@@ -5,6 +5,7 @@ point(x::Missing) = missing
 point(x::AbstractVector{Float64}) = Point(x[1], x[2])
 points(x::Matrix{Float64}) = point.(eachrow(x))
 point(x::Instantaneous{Matrix{Float64}})= point(vec(x.data))
+point(x) = error("kaka")
 # point(x) = point(x[])
 struct Track
     coords::Vector{Point}

@@ -1,15 +1,9 @@
-using CSV, JuliaDB, DungBase, Dates, UUIDs, Tables, TableOperations
+using JuliaDB, UUIDs, CSV, Tables
 import IntervalSets: width, (..), AbstractInterval, leftendpoint
-format2millisecond(_::Missing) = missing
-function format2millisecond(x) 
-    m = match(r"^(\d*)\smilliseconds?$", x)
-    isnothing(m) && return missing
-    Millisecond(parse(Int, first(m.captures)))
-end
 function DungBase.AbstractTimeLine(x)
     files = Vector{VideoFile}(undef, length(x))
     for i in rows(x)
-        files[i.index] = VideoFile(i.file_name, i.date_time, i.duration)
+        files[i.index] = VideoFile(i.file_name, i.date_time, Millisecond(Nanosecond(i.duration)))
     end
     y = x[1]
     comment = ismissing(y.comment) ? "" : y.comment
@@ -38,7 +32,7 @@ DungBase.POI(x) = POI(x.Calibration, x.Temporal)
 function DungBase.Run(x)
     @assert allunique(x.type) "POI types are not unique: $(x.type)"
     pois = Dict(Symbol(i.type) => i.POI for i in x)
-    tmp = select(table(x), Not(All(:date, :comment, :POI, :type)))
+    tmp = select(table(x), Not(:date, :comment, :POI, :type))
     setup = Dict(k => v for (k, v) in pairs(tmp[1]) if !isempty(v))
     _x = x[1]
     date = _x.date
@@ -49,23 +43,18 @@ end
 
 
 
-function loaddeomcsv(source)
+function loaddeomcsv()
 
-    t = CSV.File(joinpath(source, "video.csv")) |> TableOperations.transform(video = UUID)
-    video = table(t, pkey = :video)
-    t = CSV.File(joinpath(source, "videofile.csv")) |> TableOperations.transform(video = UUID, duration = format2millisecond)
-    videofile = table(t, pkey = :file_name)
+    video = loadtable(datadep"coffeebeetle/video.csv", indexcols = :video)
+    videofile = loadtable(datadep"coffeebeetle/videofile.csv", indexcols = :file_name)
     x = join(video, videofile, rkey = :video)
     timeline = groupby(AbstractTimeLine,  x)
-    t = CSV.File(joinpath(source, "interval.csv")) |> TableOperations.transform(interval = UUID, video = UUID, start = format2millisecond, stop = format2millisecond)
-    interval = table(t, pkey = :interval)
-    # interval = dropmissing(loadtable(joinpath(source, "interval.csv"), indexcols = :interval), :start)
+    interval = dropmissing(loadtable(datadep"coffeebeetle/interval.csv", indexcols = :interval), :start)
     x = join(interval, timeline, lkey = :video)
     temporal = dropmissing(groupby(Temporal, x, :interval), :Temporal)
 
-    board = loadtable(joinpath(source, "board.csv"), indexcols = :designation)
-    t = CSV.File(joinpath(source, "calibration.csv")) |> TableOperations.transform(calibration = UUID, extrinsic = UUID, board = String)
-    calibration = table(t, pkey = :calibration)
+    board = loadtable(datadep"coffeebeetle/board.csv", indexcols = :designation)
+    calibration = loadtable(datadep"coffeebeetle/calibration.csv", indexcols = :calibration)
     x = join(calibration, board, lkey = :board, rkey = :designation)
     x = join(x, temporal, rkey = :interval, lkey = :extrinsic)
     x = select(x, Not(:extrinsic))
@@ -75,38 +64,44 @@ function loaddeomcsv(source)
     x = JuliaDB.rename(x, :Temporal => :intrinsic)
     calibration = groupby(Calibration, x, :calibration)
 
-    t = CSV.File(joinpath(source, "poi.csv")) |> TableOperations.transform(poi = UUID, run = UUID, calibration = UUID, interval = UUID)
-    poi = table(t, pkey = :poi)
-    coord = UUID.(first.(splitext.(readdir(joinpath(source, "pixel")))))
+    poi = filter(!isempty, loadtable(datadep"coffeebeetle/poi.csv", indexcols = :poi), select = :calibration)
+    coord = first.(splitext.(readdir(datadep"coffeebeetle/pixel")))
     poi = filter(in(coord), poi, select = :interval)
     x = join(poi, temporal, lkey = :interval)
     x = join(x, calibration, lkey = :calibration)
     x = select(x, Not(:calibration))
     x = JuliaDB.transform(x, :POI => POI.(x))
 
+    #=a = []
+    b = []
+    j = 0
+    for i in x
+        y = Pair(Symbol(i.type), i.POI) 
+        if y∈ a
+            global j
+            j += 1
+            push!(b, y)
+        else
+            push!(a,  y)
+        end
+    end=#
 
-    temporal2pixel = Dict(Pair(Symbol(i.type), i.POI) => joinpath(joinpath(source, "pixel"), string(i.interval, ".csv")) for i in x)
+    temporal2pixel = Dict(Pair(Symbol(i.type), i.POI) => joinpath(datadep"coffeebeetle/pixel", string(i.interval, ".csv")) for i in x)
 
-    # JLSO.save(joinpath(source, "temporal2pixel.jlso"), "food" => "☕️🥓🍳", "cost" => 11.95, "time" => Time(9, 0))
+    JLSO.save(joinpath(datadep"coffeebeetle", "temporal2pixel.jlso"), temporal2pixel)
+    poi = select(x, Not(:Temporal, :Calibration, :poi, :interval))
 
-    poi = select(x, Not(All(:Temporal, :Calibration, :poi, :interval)))
-    t = CSV.File(joinpath(source, "run.csv")) |> TableOperations.transform(run = UUID)
-    runs = table(t, pkey = :run)
-    # x = JuliaDB.transform(runs, :date => :date => Date)
-    x = join(runs, poi, rkey = :run)
-    experiment = loadtable(joinpath(source, "experiment.csv"), indexcols = :experiment)
+    runs = loadtable(datadep"coffeebeetle/run.csv", indexcols = :run)
+    x = JuliaDB.transform(runs, :date => :date => Date)
+    x = join(x, poi, rkey = :run)
+    experiment = loadtable(datadep"coffeebeetle/experiment.csv", indexcols = :experiment)
     x = join(x, experiment, lkey = :experiment)
-
     data = groupby(x, :experiment) do xx
-        runs = groupby(Run, select(table(xx), Not(All(:experiment_folder, :experiment_description))), :run)
+        runs = groupby(Run, select(table(xx), Not(:experiment_folder, :experiment_description)), :run)
         (Experiment = Experiment(select(runs, :Run), xx[1].experiment_description), name = xx[1].experiment_folder)
     end
-
     data = Dict(i.name => i.Experiment for i in data)
 
-    return temporal2pixel, data
-
-    # JLSO.save(joinpath(datadep"coffeebeetle", "data.jlso"), data)
+    JLSO.save(joinpath(datadep"coffeebeetle", "data.jlso"), data)
 end
-
 

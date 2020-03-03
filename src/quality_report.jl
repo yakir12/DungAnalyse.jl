@@ -94,7 +94,7 @@ function getextrinsicplot(path, w, h)
     name
 end
 
-function _getplots(c::Calibration, calibfile, ϵpixel)
+function _getplots(coffeesource, c::Calibration, calibfile, ϵpixel)
     path = joinpath(coffeesource, "calibration_images", string(hash(c)))
     h, w = size(FileIO.load(joinpath(path, "extrinsic.png")))
     extrinsicplot = getextrinsicplot(path, w, h)
@@ -147,7 +147,7 @@ end
 _isinstantaneous(_::POI{C, Temporal{V, I}}) where {C <: Calibration, V <: AbstractTimeLine, I <: Instantaneous} = true
 _isinstantaneous(_) = false
 
-function clickquality(template_tex, temporalpois, pixelpois)
+function clickquality(coffeesource, template_tex, temporalpois, pixelpois)
     pois = filter(_isinstantaneous∘last, temporalpois)
     n = length(pois)
     imgname = tempname()*".jpg"
