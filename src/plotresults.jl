@@ -18,7 +18,7 @@ Base.getproperty(x::Common, sym::Symbol) = _getproperty(x, Val(sym))
 
 function get_rotation(nest, feeder)
     v = feeder - nest
-    α = -atan(v[2], v[1]) - π/2
+    α = -atan(v[2], v[1])# - π/2
     rot = LinearMap(Angle2d(α))
     rot, α
 end
@@ -31,7 +31,7 @@ function rotate!(x::Common)
     x.nest = rot(x.nest)
     x.feeder = rot(x.feeder) 
     x.track.coords .= rot.(x.track.coords)
-    x.track.direction .-= α
+    x.track.direction .+= α
     x.pellet.xy .= rot.(x.pellet.xy)
     x.originalnest = rot(x.originalnest) 
 end

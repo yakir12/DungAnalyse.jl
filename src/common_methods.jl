@@ -35,7 +35,7 @@ function Track(x::Prolonged{Matrix{Float64}})
     end
     Track(xy, v, a, tp, δ)
 end
-struct TimedPoint
+mutable struct TimedPoint
     xy::Point
     t::Float64
 end
