@@ -194,8 +194,6 @@ version = "1.1.0"
 [[FFMPEG]]
 deps = ["FFMPEG_jll"]
 git-tree-sha1 = "c82bef6fc01e30d500f588cd01d29bdd44f1924e"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaIO/FFMPEG.jl"
 uuid = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
 version = "0.3.0"
 
