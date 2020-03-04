@@ -31,7 +31,7 @@ function main(coffeesource)
         nameerror[c] = build_calibration(coffeesource, hash(c), c) 
     end
     # nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
-    trackdata = Dict()
+    #=trackdata = Dict()
     for (experimentid, v) in data
         n = length(v.runs)
         runs = Vector{Run}(undef, n)
@@ -53,8 +53,8 @@ function main(coffeesource)
             end
         end
         trackdata[experimentid] = Experiment(runs, v.description)
-    end
-    # trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+    end=#
+    trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
     return trackdata
 end
 
