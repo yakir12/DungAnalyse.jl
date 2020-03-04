@@ -35,22 +35,22 @@ function main(coffeesource)
     for (experimentid, v) in data
         n = length(v.runs)
         runs = Vector{Run}(undef, n)
-        for i in 1:n
-        # @sync for i in 1:n
-            # @spawn begin
+        # for i in 1:n
+        @sync for i in 1:n
+            @spawn begin
                 r = v.runs[i]
                 n = length(r.data)
                 poitypes = collect(keys(r.data))
                 pois = Vector{Any}(undef, n)
                 for j in 1:n
-                    # @spawn begin
+                    @spawn begin
                         poitype = poitypes[j]
                         p = r.data[poitype]
                         pois[j] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
-                    # end
+                    end
                 end
                 runs[i] = Run(Common(Run(Dict(poitype => poi for (poitype, poi) in zip(keys(r.data), pois)), r.metadata)), r.metadata)
-            # end
+            end
         end
         trackdata[experimentid] = Experiment(runs, v.description)
     end
