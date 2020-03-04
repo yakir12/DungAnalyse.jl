@@ -32,28 +32,26 @@ function main(coffeesource)
     end
     # nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
     trackdata = Dict()
-    @sync for (experimentid, v) in data
-        @spawn begin
-            n = length(v.runs)
-            runs = Vector{Run}(undef, n)
-            for i in 1:n
-                @spawn begin
-                    r = v.runs[i]
-                    n = length(r.data)
-                    poitypes = collect(keys(r.data))
-                    pois = Vector{Any}(undef, n)
-                    for i in 1:n
-                        @spawn begin
-                            poitype = poitypes[i]
-                            p = r.data[poitype]
-                            pois[i] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
-                        end
+    for (experimentid, v) in data
+        n = length(v.runs)
+        runs = Vector{Run}(undef, n)
+        @sync for i in 1:n
+            @spawn begin
+                r = v.runs[i]
+                n = length(r.data)
+                poitypes = collect(keys(r.data))
+                pois = Vector{Any}(undef, n)
+                for j in 1:n
+                    @spawn begin
+                        poitype = poitypes[j]
+                        p = r.data[poitype]
+                        pois[j] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
                     end
-                    runs[i] = Run(Common(Run(Dict(poitype => poi for (poitype, poi) in zip(keys(r.data), pois)), r.metadata)), r.metadata)
                 end
+                runs[i] = Run(Common(Run(Dict(poitype => poi for (poitype, poi) in zip(keys(r.data), pois)), r.metadata)), r.metadata)
             end
-            trackdata[experimentid] = Experiment(runs, v.description)
         end
+        trackdata[experimentid] = Experiment(runs, v.description)
     end
     # trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
     return trackdata
