@@ -1,7 +1,7 @@
 module DungAnalyse
 
 using DungBase, Serialization, Dates, JLSO, DataDeps, ProgressMeter, StaticArrays, DelimitedFiles
-import Base.Threads.@spawn
+import Base.Threads: @spawn, @threads
 
 export main
 
@@ -26,10 +26,13 @@ end
 function main(coffeesource)
     temporal2pixel, data = loaddeomcsv(coffeesource)
     cs = unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data)
-    nameerror = Dict()
-    Threads.@threads for c in cs
-        nameerror[c] = build_calibration(coffeesource, hash(c), c) 
-    end
+    nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
+
+    # nameerror = Dict()
+    # @threads for c in cs
+    #     nameerror[c] = build_calibration(coffeesource, hash(c), c) 
+    # end
+
     # nameerror = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
     #=trackdata = Dict()
     for (experimentid, v) in data
@@ -54,7 +57,37 @@ function main(coffeesource)
         end
         trackdata[experimentid] = Experiment(runs, v.description)
     end=#
-    trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+
+    # trackdata = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+
+
+    #=vs = collect(values(data))
+    n = length(vs)
+    ys = Vector{Experiment}(undef, n)
+    @threads for i in 1:n
+        v = vs[i]
+        ys[i] = Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description)
+    end
+    trackdata = Dict(zip(keys(data), ys))=#
+
+
+    trackdata = Dict{String, Experiment}()
+    @sync for (k, v) in data
+        @spawn begin
+            runs = Vector{Run}(undef, length(v.runs))
+            for (i, r) in enumerate(v.runs)
+                @spawn begin
+                    pois = Dict{Symbol, Any}()
+                    @sync for (poitype, p) in r.data
+                        @spawn pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
+                    end
+                    runs[i] = Run(Common(Run(pois, r.metadata)), r.metadata)
+                end
+            end
+            trackdata[k] = Experiment(runs, v.description)
+        end
+    end
+
     return trackdata
 end
 

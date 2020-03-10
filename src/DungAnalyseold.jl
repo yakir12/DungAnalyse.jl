@@ -10,7 +10,8 @@ using DelimitedFiles
 
 # export build_calibrations
 
-register(DataDep("coffeebeetle", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
+register(DataDep("coffeebeetlecsv", "the coffee beetle database", "https://s3.eu-central-1.amazonaws.com/vision-group-file-sharing/Data%20backup%20and%20storage/Yakir/coffee%20beetles/database.zip", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
+register(DataDep("coffeebeetlevideo", "the coffee beetle videos", "", "557ec5027d34d2641db4f2cc61c993edd2ce2bee1530254d45d26cc41c5adf7a", post_fetch_method = unpack))
 
 
 _coffeesource = joinpath(homedir(), "s3-drive")

@@ -1,11 +1,11 @@
 using CSV, JuliaDB, DungBase, Dates, UUIDs, Tables, TableOperations
 import IntervalSets: width, (..), AbstractInterval, leftendpoint
 format2millisecond(_::Missing) = missing
-function format2millisecond(x) 
-    m = match(r"^(\d*)\smilliseconds?$", x)
-    isnothing(m) && return missing
-    Millisecond(parse(Int, first(m.captures)))
-end
+# function format2millisecond(x) 
+#     m = match(r"^(\d*)\smilliseconds?$", x)
+#     isnothing(m) && return missing
+#     Millisecond(parse(Int, first(m.captures)))
+# end
 function DungBase.AbstractTimeLine(x)
     files = Vector{VideoFile}(undef, length(x))
     for i in rows(x)
@@ -53,11 +53,13 @@ function loaddeomcsv(source)
 
     t = CSV.File(joinpath(source, "video.csv")) |> TableOperations.transform(video = UUID)
     video = table(t, pkey = :video)
-    t = CSV.File(joinpath(source, "videofile.csv")) |> TableOperations.transform(video = UUID, duration = format2millisecond)
+    t = CSV.File(joinpath(source, "videofile.csv")) |> TableOperations.transform(video = UUID, duration = Nanosecond)
+    # t = CSV.File(joinpath(source, "videofile.csv")) |> TableOperations.transform(video = UUID, duration = format2millisecond)
     videofile = table(t, pkey = :file_name)
     x = join(video, videofile, rkey = :video)
     timeline = groupby(AbstractTimeLine,  x)
-    t = CSV.File(joinpath(source, "interval.csv")) |> TableOperations.transform(interval = UUID, video = UUID, start = format2millisecond, stop = format2millisecond)
+    t = CSV.File(joinpath(source, "interval.csv")) |> TableOperations.transform(interval = UUID, video = UUID, start = Nanosecond, stop = Nanosecond)
+    # t = CSV.File(joinpath(source, "interval.csv")) |> TableOperations.transform(interval = UUID, video = UUID, start = format2millisecond, stop = format2millisecond)
     interval = table(t, pkey = :interval)
     # interval = dropmissing(loadtable(joinpath(source, "interval.csv"), indexcols = :interval), :start)
     x = join(interval, timeline, lkey = :video)
