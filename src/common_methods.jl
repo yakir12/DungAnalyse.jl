@@ -143,6 +143,19 @@ function DawaySandpaper(x)
     leftupfinal = point(x.data[:leftupfinal])
     DawaySandpaper(feeder, nest, track, pellet, rightdowninitial, leftdowninitial, rightupinitial, leftupinitial, rightdownfinal, leftdownfinal, rightupfinal, leftupfinal)
 end
+struct DawayNest <: DungMethod
+    feeder::Point
+    nest::Point
+    track::Track
+    pellet::PointCollection
+    pickup::Point
+end
+function DawayNest(x) 
+    feeder, track, pellet = getdata(x.data)
+    nest = point(x.data[:nest])
+    pickup = point(x.data[:pickup])
+    DawayNest(feeder, nest, track, pellet, pickup)
+end
 struct Daway <: DungMethod
     feeder::Point
     nest::Point
@@ -159,20 +172,34 @@ end
 
 ######################### DungMethod methods ###########
 
-DungMethod(x, displace_direction::Missing, transfer::Missing, nest_coverage::Missing) = error("unidentified experimental setup")
-DungMethod(x, displace_direction::Missing, transfer::Missing, nest_coverage) = ClosedNest(x)
-function DungMethod(x, displace_direction::Missing, transfer, nest_coverage)
+DungMethod(x, displace_location, displace_direction::Missing, transfer::Missing, nest_coverage::Missing) = error("unidentified experimental setup")
+DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer::Missing, nest_coverage) = ClosedNest(x)
+function DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer, nest_coverage)
     if x.metadata.setup[:person] == "belen"
         TransferNestBelen(x)
     else
         if transfer == "back"
             TransferNest(x)
-        else
+        elseif transfer == "far"
             Transfer(x)
+        else
+            error("unidentified experimental setup")
         end
     end
 end
-DungMethod(x, displace_direction, transfer::Missing, nest_coverage) = x.metadata.setup[:person] == "belen" ? DawaySandpaper(x) : Daway(x)
+function DungMethod(x, displace_location, displace_direction, transfer::Missing, nest_coverage) 
+    if displace_location == "feeder"
+        if x.metadata.setup[:person] == "belen" 
+            DawaySandpaper(x) 
+        else
+            Daway(x)
+        end
+    elseif displace_location == "nest"
+        DawayNest(x)
+    else
+        error("unidentified experimental setup")
+    end
+end
 
 #=function DungMethod(displace_direction, person, transfer, nest_coverage)
 if !ismissing(x.displace_direction)
@@ -248,6 +275,14 @@ function Common(x::DawaySandpaper)
     Common(feeder, nest, x.track, x.pellet, originalnest)
 end
 
+function Common(x::DawayNest)
+    originalnest = x.nest
+    feeder = x.feeder
+    v = originalnest - x.pickup
+    nest = feeder + v
+    Common(feeder, nest, x.track, x.pellet, originalnest)
+end
+
 function Common(x::Daway)
     originalnest = x.nest
     v = x.feeder - x.initialfeeder
@@ -257,9 +292,17 @@ end
 
 ######################### END ######################
 
-Common(x) = Common(DungMethod(x, get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
+Common(x) = Common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
 
 
+#=function Common(x::Run) 
+    displace_location = get(x.metadata.setup, :displace_location, missing)
+    displace_direction = get(x.metadata.setup, :displace_direction, missing)
+    transfer = get(x.metadata.setup, :transfer, missing)
+    nest_coverage = get(x.metadata.setup, :nest_coverage, missing)
+    y = DungMethod(x, displace_location, displace_direction, transfer, nest_coverage)
+    Common(y)
+end=#
 
 
 #=x = rand(100)

@@ -72,19 +72,6 @@ function loaddeomcsv()
     x = select(x, Not(:calibration))
     x = JuliaDB.transform(x, :POI => POI.(x))
 
-    #=a = []
-    b = []
-    j = 0
-    for i in x
-        y = Pair(Symbol(i.type), i.POI) 
-        if y∈ a
-            global j
-            j += 1
-            push!(b, y)
-        else
-            push!(a,  y)
-        end
-    end=#
 
     temporal2pixel = Dict(Pair(Symbol(i.type), i.POI) => joinpath(datadep"coffeebeetle/pixel", string(i.interval, ".csv")) for i in x)
 
