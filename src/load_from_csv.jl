@@ -1,6 +1,7 @@
 using CSV, JuliaDB, DungBase, Dates, UUIDs, Tables, TableOperations
 import IntervalSets: width, (..), AbstractInterval, leftendpoint
 import DataFrames: DataFrame
+import Base.Threads: @spawn
 # format2millisecond(_::Missing) = missing
 # function format2millisecond(x) 
 #     m = match(r"^(\d*)\smilliseconds?$", x)

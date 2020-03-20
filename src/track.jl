@@ -7,7 +7,7 @@ const maxattempt = 3
 
 const Point = SVector{2, Float64}
 point(x::Missing) = x
-point(x::Instantaneous)= Point(x.data)
+point(x::Instantaneous)= Point(x.data[1], x.data[2])
 
 _getv(spl, k) = SVector{2, Float64}(derivative(spl, k))
 

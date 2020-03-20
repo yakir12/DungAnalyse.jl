@@ -1,4 +1,4 @@
-using Unitful, Statistics, StaticArrays, Interpolations, StructArrays
+using Unitful, Statistics, StaticArrays, StructArrays
 
 mutable struct TimedPoint
     xy::Point

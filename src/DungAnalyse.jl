@@ -13,13 +13,12 @@ include("common.jl")
 
 function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, I}}) where {C <: Calibration, V <: AbstractTimeLine, I <: Instantaneous}
     xyt = readdlm(joinpath(coffeesource, "pixel", temporal2pixel[Pair(k, p)]))
-    I(xyt)
+    Instantaneous(xyt)
 end
-
-# function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, P}}) where {C <: Calibration, V <: AbstractTimeLine, P <: Prolonged}
-#     xyt = readdlm(joinpath(coffeesource, "pixel", temporal2pixel[Pair(k, p)]))
-#     Prolonged(xyt)
-# end
+function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, P}}) where {C <: Calibration, V <: AbstractTimeLine, P <: Prolonged}
+    xyt = readdlm(joinpath(coffeesource, "pixel", temporal2pixel[Pair(k, p)]))
+    Prolonged(xyt)
+end
 
 build_calibrations(coffeesource, temporal2pixel, data) = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
 # function build_calibrations(coffeesource, temporal2pixel, data)
