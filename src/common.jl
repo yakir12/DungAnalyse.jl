@@ -1,47 +1,14 @@
 using Unitful, Statistics, StaticArrays, Interpolations, StructArrays
 
-const Point = SVector{2, Float64}
-point(x::Missing) = missing
-point(x::AbstractVector{Float64}) = Point(x[1], x[2])
-points(x::Matrix{Float64}) = point.(eachrow(x))
-point(x::Instantaneous{Matrix{Float64}})= point(vec(x.data))
-point(x) = error("kaka")
-# point(x) = point(x[])
-struct Track
-    coords::Vector{Point}
-    distance::Vector{Float64}
-    direction::Vector{Float64}
-    tp::Int
-    Δt::Float64
-end
-function Track(x::Prolonged{Matrix{Float64}})
-    xyt = !issorted(x.data[:,3]) ? sortslices(x.data, dims=1, lt=(x,y)->isless(x[3],y[3])) : x.data
-    t = xyt[:,3]
-    Δ = diff(t)
-    δ = minimum(Δ)
-    xy = points(xyt)
-    n = length(xy)
-    if !all(x -> isapprox(x, δ, atol = 1/30), Δ)
-        itp = interpolate((t, ), xy, Gridded(Linear()))
-        t_lin = range(t[1], t[end], length = n)
-        δ = step(t_lin)
-        xy .= itp.(t_lin)
-    end
-    _xy, v, a, m = smoothed(xy)
-    xy .= Point.(eachcol(_xy))
-    tp = findfirst(x -> x > 0.5, m)
-    if tp ≡ nothing || tp ≥ n - 1
-        tp = n
-    end
-    Track(xy, v, a, tp, δ)
-end
 mutable struct TimedPoint
     xy::Point
     t::Float64
 end
+
 const PointCollection = StructVector{TimedPoint}
 pointcollection(x::Missing, t₀) = StructVector{TimedPoint}(undef, 0)
 pointcollection(x, t₀) = StructVector(TimedPoint(Point(i[1], i[2]), i[3] - t₀) for i in eachrow(x.data))
+
 function getdata(x)
     feeder = point(x[:feeder])
     track = Track(x[:track])
@@ -201,30 +168,6 @@ function DungMethod(x, displace_location, displace_direction, transfer::Missing,
     end
 end
 
-#=function DungMethod(displace_direction, person, transfer, nest_coverage)
-if !ismissing(x.displace_direction)
-if x.person == "belen"
-DawaySandpaper(x)
-else
-Daway(x)
-end
-elseif !ismissing(x.transfer)
-if x.person == "belen"
-TransferNestBelen(x)
-else
-if x.transfer == "back"
-TransferNest(x)
-else
-Transfer(x)
-end
-end
-elseif x.nest_coverage == "closed"
-ClosedNest(x)
-else
-error("unidentified experimental setup")
-end
-end=#
-
 ######################### Common methods ###########
 
 mutable struct Common{N}
@@ -293,21 +236,4 @@ end
 ######################### END ######################
 
 Common(x) = Common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
-
-
-#=function Common(x::Run) 
-    displace_location = get(x.metadata.setup, :displace_location, missing)
-    displace_direction = get(x.metadata.setup, :displace_direction, missing)
-    transfer = get(x.metadata.setup, :transfer, missing)
-    nest_coverage = get(x.metadata.setup, :nest_coverage, missing)
-    y = DungMethod(x, displace_location, displace_direction, transfer, nest_coverage)
-    Common(y)
-end=#
-
-
-#=x = rand(100)
-i = 1:5
-z = StructArray((x_cm = view(x, i), y_cm = view(x, 2 .+ i), t = view(x, 3 .+ i)))
-z.t .-= z.t[1]=#
-
 

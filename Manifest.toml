@@ -174,11 +174,11 @@ version = "1.1.6"
 
 [[DungBase]]
 deps = ["Dates", "IntervalSets", "StaticArrays", "UUIDs"]
-git-tree-sha1 = "2ff17d0ccb48c1e468ce17a5b2b2eb84d190d839"
+git-tree-sha1 = "93e914a0ca09e0c2aa1b0ba40ab1e6b8627a3a7a"
 repo-rev = "master"
 repo-url = "https://github.com/yakir12/DungBase.jl"
 uuid = "bd6f3a87-2f53-57d0-9c4e-5625ef189a5e"
-version = "0.1.0"
+version = "0.2.0"
 
 [[ExprTools]]
 git-tree-sha1 = "08c1f74d9ad03acf0ee84c12c9e665ab1a9a6e33"

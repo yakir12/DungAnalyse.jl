@@ -103,9 +103,9 @@ function loaddeomcsv(source)
     experiment = loadtable(joinpath(source, "experiment.csv"), indexcols = :experiment)
     x = join(x, experiment, lkey = :experiment)
 
-    data = groupby(x, :experiment, usekey = true) do xx
+    data = groupby(x, :experiment, usekey = true) do k, xx
         runs = groupby(Run, select(table(xx), Not(All(:experiment_folder, :experiment_description))), :run)
-        (Experiment = Experiment(select(runs, :Run), xx[1].experiment_description), name = xx[1].experiment)
+        (Experiment = Experiment(select(runs, :Run), xx[1].experiment_description), name = k.experiment)
         # (Experiment = Experiment(select(runs, :Run), xx[1].experiment_description), name = xx[1].experiment_folder)
     end
 
