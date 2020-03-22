@@ -3,7 +3,9 @@ module DungAnalyse
 using DungBase, ProgressMeter, DelimitedFiles
 # import Base.Threads: @spawn, @threads
 
-export main
+export main, homing, searching, searchcenter, turningpoint
+
+
 
 include("load_from_csv.jl")
 include("ffmpeg.jl")

@@ -1,9 +1,8 @@
-using StaticArrays, StatsBase, Dierckx, AngleBetweenVectors, OnlineStats, LinearAlgebra
+using StatsBase, Dierckx, AngleBetweenVectors, LinearAlgebra
 
-const ignorefirst = 10
-const deviatingangle = π/3
-const tpangle = π/2
-const maxattempt = 3
+const ignorefirst = 10 # cm
+const bigturn = π/3 # 60°
+const s = 500
 
 const Point = SVector{2, Float64}
 point(x::Missing) = x
@@ -11,48 +10,23 @@ point(x::Instantaneous)= Point(x.data[1], x.data[2])
 
 _getv(spl, k) = SVector{2, Float64}(derivative(spl, k))
 
-function gettpi(spl, ks)
-    direction = SVector{2, Mean}(Mean(), Mean())
-    v = _getv(spl, ks[1])
-    fit!.(direction, v)
-    tp = 1
-    attempts = 1
-    nk = length(ks)
-    for i in 2:nk
-        v = _getv(spl, ks[i])
-        Δ = angle(mean.(direction), v)
-        if Δ < deviatingangle
-            fit!.(direction, v)
-            tp = i + 1
-        elseif Δ < tpangle
-            attempts += 1
-            if attempts > maxattempt
-                return tp
-            end
-        else
-            return tp
-        end
+function gettpindex(spl, ks)
+    tp = ks[1]
+    vlast = _getv(spl, ks[1])
+    for k in Iterators.drop(ks, 1)
+        v = _getv(spl, k)
+        Δ = angle(vlast, v)
+        tp = k
+        Δ > bigturn && break
+        vlast = v
     end
-    return nk
-end
-function gettp(spl)
-    ks = Dierckx.get_knots(spl)
-    filter!(xy -> norm(spl(xy) - spl(0)) > ignorefirst, ks)
-    tp = gettpi(spl, ks)
-    ks[tp]
+    return tp
 end
 
-function _find_close2tp(xy, tp)
-    m = Inf
-    for (i, p) in enumerate(xy)
-        _m = norm(p - tp)
-        if _m ≤ m
-            m = _m
-        else
-            return i
-        end
-    end
-    return length(xy)
+function gettpknot(spl)
+    ks = Dierckx.get_knots(spl)
+    filter!(k -> norm(spl(k) - spl(0)) > ignorefirst, ks)
+    gettpindex(spl, ks)
 end
 
 struct Track
@@ -61,15 +35,34 @@ struct Track
     tp::Int
 end
 
+function filterdance(xy, Δt)
+    xy2 = [xy[1,:]]
+    t = [0.0]
+    for p in eachrow(xy)
+        if norm(p - xy2[end]) > 4
+            push!(xy2, p)
+            push!(t, t[end] + Δt)
+        else
+            t[end] += Δt
+        end
+    end
+    t .-= t[1]
+    return t, hcat(xy2...)
+end
+
 function Track(x::Prolonged)
     xyt = !issorted(x.data[:, 3]) ? sortslices(x.data, dims = 1, lt = (x, y) -> isless(x[3], y[3])) : x.data
     Δt = mean(trim(diff(xyt[:, 3]), prop = 0.1))
-    t = range(0.0, step = Δt, length = size(xyt, 1))
-    spl = ParametricSpline(t, xyt[:, 1:2]'; s = 500)
-    xy = Point.(spl.(t))
-    tp = gettp(spl)
-    i = _find_close2tp(xy, tp)
-    Track(xy, t, i)
+    t, xy = filterdance(xyt[:,1:2], Δt)
+    spl = ParametricSpline(t, xy; s = s, k = 2)
+    tl = range(0.0, step = Δt, stop = t[end])
+    xyl = Point.(spl.(tl))
+    tp = gettpknot(spl)
+    i = findfirst(≥(tp), tl)
+    if isnothing(i)
+        i = length(tl)
+    end
+    Track(xyl, tl, i)
 end
 
 homing(t::Track) = t.coords[1:t.tp]

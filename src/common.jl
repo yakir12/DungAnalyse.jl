@@ -1,4 +1,4 @@
-using Unitful, Statistics, StaticArrays, StructArrays
+using Unitful, Statistics, StaticArrays, StructArrays, Rotations, CoordinateTransformations
 
 mutable struct TimedPoint
     xy::Point
@@ -236,4 +236,38 @@ end
 ######################### END ######################
 
 Common(x) = Common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
+
+function get_rotation(nest, feeder)
+    v = feeder - nest
+    α = -atan(v[2], v[1])# - π/2
+    rot = LinearMap(Angle2d(α))
+    rot, α
+end
+
+(p::LinearMap{Angle2d{Float64}})(x::Missing) = missing
+
+# LinearMap{Angle2d{Float64}}(x::Missing) = missing
+function rotate!(x::Common)
+    rot, α = get_rotation(x.nest, x.feeder)
+    x.nest = rot(x.nest)
+    x.feeder = rot(x.feeder) 
+    x.track.coords .= rot.(x.track.coords)
+    # x.track.direction .+= α
+    x.pellet.xy .= rot.(x.pellet.xy)
+    x.originalnest = rot(x.originalnest) 
+end
+
+function center2!(x::Common, c)
+    x.nest -= c
+    x.feeder -= c
+    for i in eachindex(x.track.coords)
+        x.track.coords[i] -= c
+    end
+    for i in eachindex(x.pellet)
+        x.pellet[i].xy -= c
+    end
+    if !ismissing(x.originalnest)
+        x.originalnest -= c
+    end
+end
 
