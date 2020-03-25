@@ -150,13 +150,13 @@ git-tree-sha1 = "d76aa4de7fa717e59662bcea10f3db0ddf9d52be"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "1.1.6"
 
-[[DungBase]]
+[[DungBase2]]
 deps = ["Dates", "IntervalSets", "StaticArrays", "UUIDs"]
-git-tree-sha1 = "7d9f2122120e97f0f786f196505bd27a7e3a283a"
+git-tree-sha1 = "ce970623e8e583abe6b46c4778f4a80abeff788f"
 repo-rev = "master"
-repo-url = "https://github.com/yakir12/DungBase.jl"
-uuid = "bd6f3a87-2f53-57d0-9c4e-5625ef189a5e"
-version = "0.3.0"
+repo-url = "/home/yakir/dungProject/DungBase2"
+uuid = "a2cf8644-ccc3-4d83-bc5e-1c09f1bd1163"
+version = "0.1.0"
 
 [[FFMPEG]]
 deps = ["FFMPEG_jll"]
