@@ -1,6 +1,6 @@
 module DungAnalyse
 
-using DungBase2, ProgressMeter, DelimitedFiles
+using DungBase, ProgressMeter, DelimitedFiles
 # import Base.Threads: @spawn, @threads
 
 export main, homing, searching, searchcenter, turningpoint
