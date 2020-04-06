@@ -257,6 +257,16 @@ function rotate!(x::Common)
     x.originalnest = rot(x.originalnest) 
 end
 
+function rotate2!(x::Common, c)
+    rot, α = get_rotation(c, x.feeder)
+    x.nest = rot(x.nest)
+    x.feeder = rot(x.feeder) 
+    x.track.coords .= rot.(x.track.coords)
+    # x.track.direction .+= α
+    x.pellet.xy .= rot.(x.pellet.xy)
+    x.originalnest = rot(x.originalnest) 
+end
+
 function center2!(x::Common, c)
     x.nest -= c
     x.feeder -= c

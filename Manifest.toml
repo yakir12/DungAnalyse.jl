@@ -150,12 +150,10 @@ git-tree-sha1 = "d76aa4de7fa717e59662bcea10f3db0ddf9d52be"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "1.1.6"
 
-[[DungBase2]]
+[[DungBase]]
 deps = ["Dates", "IntervalSets", "StaticArrays", "UUIDs"]
-git-tree-sha1 = "ce970623e8e583abe6b46c4778f4a80abeff788f"
-repo-rev = "master"
-repo-url = "/home/yakir/dungProject/DungBase2"
-uuid = "a2cf8644-ccc3-4d83-bc5e-1c09f1bd1163"
+git-tree-sha1 = "abe571853f0a4fe2fe1eae3dd99913d3edefeefe"
+uuid = "bd6f3a87-2f53-57d0-9c4e-5625ef189a5e"
 version = "0.1.0"
 
 [[FFMPEG]]
@@ -511,9 +509,9 @@ version = "0.10.0"
 
 [[StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "1085ffbf5fd48fdba64ef8e902ca429c4e1212d3"
+git-tree-sha1 = "5a3bcb6233adabde68ebc97be66e95dcb787424c"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.11.1"
+version = "0.12.1"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
