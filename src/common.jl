@@ -10,8 +10,8 @@ pointcollection(x::Missing, t₀) = StructVector{TimedPoint}(undef, 0)
 pointcollection(x, t₀) = StructVector(TimedPoint(Point(i[1], i[2]), i[3] - t₀) for i in eachrow(x.data))
 
 function getdata(x)
-    feeder = point(get(x, :feeder, missing))
     track = Track(x[:track])
+    feeder = point(get(x, :feeder, x[:track].data[1,1:2]))
     pellet = pointcollection(get(x, :pellet, missing), x[:track].data[1,3])
     feeder, track, pellet
 end
@@ -136,21 +136,6 @@ function Daway(x)
     initialfeeder = point(x.data[:initialfeeder])
     Daway(feeder, nest, track, pellet, initialfeeder)
 end
-struct TransferAyse <: DungMethod
-    feeder::Point
-    track::Track
-    pellet::PointCollection
-    nest2feeder::Float64
-    nestdirection::Point
-end
-function TransferAyse(x) 
-    _, track, pellet = getdata(x.data)
-    feeder = first(track)
-    d, u = split(string(x.metadata.setup[:nest2feeder]))
-    nest2feeder = Float64(ustrip(uconvert(Unitful.cm, parse(Int, d)*getfield(Unitful, Symbol(u)))))
-    nestdirection = point(x.data[:feedertonestdirection])
-    TransferAyse(feeder, track, pellet, nest2feeder, nestdirection)
-end
 
 ######################### DungMethod methods ###########
 
@@ -159,8 +144,6 @@ DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer:
 function DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer, nest_coverage)
     if x.metadata.setup[:person] == "belen"
         TransferNestBelen(x)
-    elseif x.metadata.setup[:person] == "ayse"
-        TransferAyse(x)
     else
         if transfer == "back"
             TransferNest(x)
@@ -248,14 +231,6 @@ function Common(x::Daway)
     v = x.feeder - x.initialfeeder
     nest = originalnest + v
     Common(x.feeder, nest, x.track, x.pellet, originalnest)
-end
-
-function Common(x::TransferAyse)
-    v = x.nestdirection - x.feeder
-    α = atan(v[2], v[1])
-    u = Point(cos(α), sin(α))
-    nest = x.feeder + u*x.nest2feeder
-    Common(x.feeder, nest, x.track, x.pellet, missing)
 end
 
 ######################### END ######################
