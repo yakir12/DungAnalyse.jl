@@ -2,6 +2,7 @@ using StatsBase, StaticArrays, Dierckx, AngleBetweenVectors, LinearAlgebra
 
 const ignorefirst = 10 # cm
 const bigturn = π/3 # 60°
+# const smallturn = π/93 # 60°
 const s = 500
 
 const Point = SVector{2, Float64}
@@ -26,7 +27,22 @@ end
 function gettpknot(spl)
     ks = Dierckx.get_knots(spl)
     filter!(k -> norm(spl(k) - spl(0)) > ignorefirst, ks)
-    gettpindex(spl, ks)
+    tp2 = gettpindex(spl, ks)
+    tp1 = copy(tp2)
+    for k in ks
+        k == tp2 && break
+        tp1 = k
+    end
+    tp1 += 0.1
+    if tp1 < tp2
+        main = _getv(spl, tp1)
+        for t in tp1:0.3:tp2
+            v = _getv(spl, t)
+            Δ = angle(main, v)
+            Δ > bigturn && return t
+        end
+    end
+    return tp2
 end
 
 struct Track
@@ -69,3 +85,4 @@ homing(t::Track) = t.coords[1:t.tp]
 searching(t::Track) = t.coords[t.tp:end]
 searchcenter(t::Track) = mean(searching(t))
 turningpoint(t::Track) = t.coords[t.tp]
+
