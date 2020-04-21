@@ -28,6 +28,7 @@ function gettpknot(spl)
     ks = Dierckx.get_knots(spl)
     filter!(k -> norm(spl(k) - spl(0)) > ignorefirst, ks)
     tp2 = gettpindex(spl, ks)
+    # return tp2
     tp1 = copy(tp2)
     for k in ks
         k == tp2 && break
@@ -36,10 +37,10 @@ function gettpknot(spl)
     tp1 += 0.1
     if tp1 < tp2
         main = _getv(spl, tp1)
-        for t in tp1:0.3:tp2
+        for t in tp2:-0.3:tp1
             v = _getv(spl, t)
             Δ = angle(main, v)
-            Δ > bigturn && return t
+            Δ < bigturn && return t
         end
     end
     return tp2
