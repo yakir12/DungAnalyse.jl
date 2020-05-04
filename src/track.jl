@@ -50,6 +50,7 @@ struct Track
     coords::Vector{Point}
     t::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}
     tp::Int
+    rawcoords::Vector{Point}
 end
 
 function filterdance(xy, Δt)
@@ -79,7 +80,9 @@ function Track(x::Prolonged)
     if isnothing(i)
         i = length(tl)
     end
-    Track(xyl, tl, i)
+    spl2 = ParametricSpline(xyt[:,3], xyt[:,1:2]'; s = 100, k = 3)
+    xyl2 = Point.(spl2.(tl))
+    Track(xyl, tl, i, xyl2)
 end
 
 homing(t::Track) = t.coords[1:t.tp]
