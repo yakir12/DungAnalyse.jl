@@ -80,7 +80,7 @@ function Track(x::Prolonged)
     if isnothing(i)
         i = length(tl)
     end
-    spl2 = ParametricSpline(xyt[:,3] .- xyt[1,3], xyt[:,1:2]'; s = 100, k = 3)
+    spl2 = ParametricSpline(xyt[:,3] .- xyt[1,3], xyt[:,1:2]'; s = 0.0)
     xyl2 = Point.(spl2.(tl))
     Track(xyl, tl, i, xyl2)
 end
