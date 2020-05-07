@@ -1,4 +1,4 @@
-using StatsBase, StaticArrays, Dierckx, AngleBetweenVectors, LinearAlgebra
+using StatsBase, StaticArrays, StructArrays, Dierckx, AngleBetweenVectors, LinearAlgebra
 
 const ignorefirst = 10 # cm
 const bigturn = π/3 # 60°

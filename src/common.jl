@@ -1,4 +1,4 @@
-using Unitful, Statistics, StaticArrays, StructArrays, Rotations, CoordinateTransformations
+using Unitful, Statistics, StaticArrays, Rotations, CoordinateTransformations
 
 function getdata(x)
     track = Track(x[:track])
