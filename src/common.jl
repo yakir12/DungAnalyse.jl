@@ -1,14 +1,5 @@
 using Unitful, Statistics, StaticArrays, StructArrays, Rotations, CoordinateTransformations
 
-mutable struct TimedPoint
-    xy::Point
-    t::Float64
-end
-
-const PointCollection = StructVector{TimedPoint}
-pointcollection(x::Missing, t₀) = StructVector{TimedPoint}(undef, 0)
-pointcollection(x, t₀) = StructVector(TimedPoint(Point(i[1], i[2]), i[3] - t₀) for i in eachrow(x.data))
-
 function getdata(x)
     track = Track(x[:track])
     feeder = point(get(x, :feeder, x[:track].data[1,1:2]))

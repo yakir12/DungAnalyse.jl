@@ -46,11 +46,20 @@ function gettpknot(spl)
     return tp2
 end
 
+mutable struct TimedPoint
+    xy::Point
+    t::Float64
+end
+
+const PointCollection = StructVector{TimedPoint}
+pointcollection(x::Missing, t₀) = StructVector{TimedPoint}(undef, 0)
+pointcollection(x, t₀) = StructVector(TimedPoint(Point(i[1], i[2]), i[3] - t₀) for i in eachrow(x.data))
+
 struct Track
     coords::Vector{Point}
     t::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}
     tp::Int
-    rawcoords::Matrix{Float64}
+    rawcoords::StructArray{TimedPoint}
 end
 
 function filterdance(xy, Δt)
@@ -80,7 +89,8 @@ function Track(x::Prolonged)
     if isnothing(i)
         i = length(tl)
     end
-    Track(xyl, tl, i, xyt)
+    raw = pointcollection((data = xyt, ), xyt[1,3])
+    Track(xyl, tl, i, raw)
 end
 
 homing(t::Track) = t.coords[1:t.tp]
