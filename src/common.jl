@@ -238,7 +238,7 @@ end
 (p::LinearMap{Angle2d{Float64}})(x::Missing) = missing
 
 # LinearMap{Angle2d{Float64}}(x::Missing) = missing
-function rotate!(x::Common)
+function rotate!(x::Common{N}) where N
     rot, α = get_rotation(x.nest, x.feeder)
     x.nest = rot(x.nest)
     x.feeder = rot(x.feeder) 
@@ -248,7 +248,7 @@ function rotate!(x::Common)
     x.originalnest = rot(x.originalnest) 
 end
 
-function rotate2!(x::Common, c)
+function rotate2!(x::Common{N}, c) where N
     rot, α = get_rotation(c, x.feeder)
     x.nest = rot(x.nest)
     x.feeder = rot(x.feeder) 
@@ -258,7 +258,7 @@ function rotate2!(x::Common, c)
     x.originalnest = rot(x.originalnest) 
 end
 
-function center2!(x::Common, c)
+function center2!(x::Common{N}, c) where N
     x.nest -= c
     x.feeder -= c
     for i in eachindex(x.track.coords)
