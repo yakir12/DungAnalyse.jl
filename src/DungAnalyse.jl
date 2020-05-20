@@ -10,7 +10,6 @@ export main, homing, searching, searchcenter, turningpoint
 include("load_from_csv.jl")
 include("ffmpeg.jl")
 include("calibrate.jl")
-include("track.jl")
 include("common.jl")
 
 function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, I}}) where {C <: Calibration, V <: AbstractTimeLine, I <: Instantaneous}
