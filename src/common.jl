@@ -168,12 +168,12 @@ end
     pellet::PointCollection
     originalnest::N
 end=#
-Common(x::ClosedNest) = Common(x.feeder, x.nest, x.track, x.pellet, x.nest)
+common(x::ClosedNest) = Common(x.feeder, x.nest, x.track, x.pellet, x.nest)
 # nest(x::Common) = x.nest
 # turning(x::Common) = x.track.homing[end]
 # originalnest(x::Common) = x.originalnest
 
-function Common(x::TransferNestBelen)
+function common(x::TransferNestBelen)
     v = x.northbefore - x.southbefore
     u = x.nestbefore - x.feederbefore 
     azimuth = atan(v[2], v[1]) - atan(u[2], u[1])
@@ -185,7 +185,7 @@ function Common(x::TransferNestBelen)
     Common(x.feeder, nest, x.track, x.pellet, missing)
 end
 
-function Common(x::Transfer)
+function common(x::Transfer)
     v = x.north - x.south
     α = atan(v[2], v[1]) + x.azimuth - π
     u = Point(cos(α), sin(α))
@@ -193,12 +193,12 @@ function Common(x::Transfer)
     Common(x.feeder, nest, x.track, x.pellet, missing)
 end
 
-function Common(x::TransferNest)
-    y = Common(Transfer(x))
+function common(x::TransferNest)
+    y = common(Transfer(x))
     Common(y.feeder, y.nest, y.track, y.pellet, x.originalnest)
 end
 
-function Common(x::DawaySandpaper)
+function common(x::DawaySandpaper)
     originalnest = x.nest
     initial = mean(getproperty(x, k) for k in [:rightdowninitial, :leftdowninitial, :rightupinitial, :leftupinitial])
     final = mean(getproperty(x, k) for k in [:rightdownfinal, :leftdownfinal, :rightupfinal, :leftupfinal])
@@ -209,7 +209,7 @@ function Common(x::DawaySandpaper)
     Common(feeder, nest, x.track, x.pellet, originalnest)
 end
 
-function Common(x::DawayNest)
+function common(x::DawayNest)
     originalnest = x.nest
     feeder = x.feeder
     v = originalnest - x.pickup
@@ -217,7 +217,7 @@ function Common(x::DawayNest)
     Common(feeder, nest, x.track, x.pellet, originalnest)
 end
 
-function Common(x::Daway)
+function common(x::Daway)
     originalnest = x.nest
     v = x.feeder - x.initialfeeder
     nest = originalnest + v
@@ -226,7 +226,7 @@ end
 
 ######################### END ######################
 
-Common(x) = Common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
+common(x) = common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
 
 function get_rotation(nest, feeder)
     v = feeder - nest

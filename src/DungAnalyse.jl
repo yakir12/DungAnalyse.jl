@@ -27,7 +27,7 @@ build_calibrations(coffeesource, temporal2pixel, data) = Dict(c => build_calibra
 #     Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
 # end
 
-raw2cm(data, nameerror, coffeesource, temporal2pixel) = Dict(experimentid => Experiment([Run(Common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+raw2cm(data, nameerror, coffeesource, temporal2pixel) = Dict(experimentid => Experiment([Run(common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
 # function raw2cm(data, nameerror, coffeesource, temporal2pixel)
 #     n = 0
 #     for v in values(data)
