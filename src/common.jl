@@ -169,9 +169,9 @@ end
     originalnest::N
 end=#
 Common(x::ClosedNest) = Common(x.feeder, x.nest, x.track, x.pellet, x.nest)
-nest(x::Common) = x.nest
-turning(x::Common) = x.track.homing[end]
-originalnest(x::Common) = x.originalnest
+# nest(x::Common) = x.nest
+# turning(x::Common) = x.track.homing[end]
+# originalnest(x::Common) = x.originalnest
 
 function Common(x::TransferNestBelen)
     v = x.northbefore - x.southbefore
