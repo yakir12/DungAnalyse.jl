@@ -161,13 +161,13 @@ end
 
 ######################### Common methods ###########
 
-mutable struct Common{N}
+#=mutable struct Common{N}
     feeder::Point
     nest::Point
     track::Track
     pellet::PointCollection
     originalnest::N
-end
+end=#
 Common(x::ClosedNest) = Common(x.feeder, x.nest, x.track, x.pellet, x.nest)
 nest(x::Common) = x.nest
 turning(x::Common) = x.track.homing[end]
