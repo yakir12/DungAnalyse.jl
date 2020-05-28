@@ -5,8 +5,6 @@ using DungBase, ProgressMeter, DelimitedFiles
 
 export main, homing, searching, searchcenter, turningpoint
 
-__init__() = @warn "This package is deprecated"
-
 include("load_from_csv.jl")
 include("ffmpeg.jl")
 include("calibrate.jl")
