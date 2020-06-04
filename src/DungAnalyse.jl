@@ -1,6 +1,6 @@
 module DungAnalyse
 
-using DungBase, ProgressMeter, DelimitedFiles
+using DungBase, ProgressMeter, DelimitedFiles, ProgressMeter
 # import Base.Threads: @spawn, @threads
 
 export main, homing, searching, searchcenter, turningpoint
@@ -19,38 +19,43 @@ function temp2pixel(coffeesource, temporal2pixel, k, p::POI{C, Temporal{V, P}}) 
     Prolonged(xyt)
 end
 
-build_calibrations(coffeesource, temporal2pixel, data) = Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
+function build_calibrations(coffeesource, temporal2pixel, data) 
+    cs = unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data)
+    n = length(cs)
+    p = Progress(n, 1, "calibrating")
+    Dict((next!(p); c => build_calibration(coffeesource, hash(c), c)) for c in cs)
+end
 # function build_calibrations(coffeesource, temporal2pixel, data)
 #     cs = unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data)
 #     Dict(c => build_calibration(coffeesource, hash(c), c) for c in unique(p.calib for (_,v) in data for r in v.runs for (_,p) in r.data))
 # end
 
-raw2cm(data, nameerror, coffeesource, temporal2pixel) = Dict(experimentid => Experiment([Run(common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
-# function raw2cm(data, nameerror, coffeesource, temporal2pixel)
-#     n = 0
-#     for v in values(data)
-#         for r in v.runs
-#             for _ in r.data
-#                 n += 1
-#             end
-#         end
-#     end
-#     ph = Progress(n)
-#     trackdata = Dict{String, Experiment}()
-#     for (k, v) in data
-#         runs = Vector{Run}(undef, length(v.runs))
-#         for (i, r) in enumerate(v.runs)
-#             pois = Dict{Symbol, Any}()
-#             for (poitype, p) in r.data
-#                 pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
-#                 next!(ph)
-#             end
-#             runs[i] = Run(Common(Run(pois, r.metadata)), r.metadata)
-#         end
-#         trackdata[k] = Experiment(runs, v.description)
-#     end
-#     return trackdata
-# end
+# raw2cm(data, nameerror, coffeesource, temporal2pixel) = Dict(experimentid => Experiment([Run(common(Run(Dict(poitype => calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p)) for (poitype, p) in r.data), r.metadata)), r.metadata) for r in v.runs], v.description) for (experimentid, v) in data)
+function raw2cm(data, nameerror, coffeesource, temporal2pixel)
+    n = 0
+    for v in values(data)
+        for r in v.runs
+            for _ in r.data
+                n += 1
+            end
+        end
+    end
+    ph = Progress(n)
+    trackdata = Dict{String, Experiment}()
+    for (k, v) in data
+        runs = Vector{Run}(undef, length(v.runs))
+        for (i, r) in enumerate(v.runs)
+            pois = Dict{Symbol, Any}()
+            for (poitype, p) in r.data
+                pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
+                next!(ph)
+            end
+            runs[i] = Run(Common(Run(pois, r.metadata)), r.metadata)
+        end
+        trackdata[k] = Experiment(runs, v.description)
+    end
+    return trackdata
+end
 
 function main(coffeesource)
     temporal2pixel, data = loaddeomcsv(coffeesource)
