@@ -1,7 +1,7 @@
 name = "DungAnalyse"
 uuid = "4b12b552-3a4e-596f-96c3-8d21d15d5d04"
 authors = ["yakir12 <12.yakir@gmail.com>"]
-version = "0.4.2"
+version = "0.4.3"
 
 [deps]
 AngleBetweenVectors = "ec570357-d46e-52ed-9726-18773498274d"
@@ -32,7 +32,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 AngleBetweenVectors = "0.3.0"
 CSV = "0.6.1"
 CoordinateTransformations = "0.5.1"
-DataFrames = "0.20.2"
+DataFrames = "< 1.0.0"
 Dierckx = "0.4.1"
 DungBase = "1.0"
 FFMPEG = "0.3.0"
