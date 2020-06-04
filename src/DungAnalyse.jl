@@ -50,7 +50,7 @@ function raw2cm(data, nameerror, coffeesource, temporal2pixel)
                 pois[poitype] = calibrate(nameerror[p.calib].filename, temp2pixel(coffeesource, temporal2pixel, poitype, p))
                 next!(ph)
             end
-            runs[i] = Run(Common(Run(pois, r.metadata)), r.metadata)
+            runs[i] = Run(common(Run(pois, r.metadata)), r.metadata)
         end
         trackdata[k] = Experiment(runs, v.description)
     end
