@@ -1,7 +1,7 @@
 name = "DungAnalyse"
 uuid = "4b12b552-3a4e-596f-96c3-8d21d15d5d04"
 authors = ["yakir12 <12.yakir@gmail.com>"]
-version = "0.4.1"
+version = "0.4.2"
 
 [deps]
 AngleBetweenVectors = "ec570357-d46e-52ed-9726-18773498274d"
