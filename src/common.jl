@@ -143,7 +143,7 @@ function DungMethod(x, displace_location::Missing, displace_direction::Missing, 
     else
         if transfer == "back"
             TransferNest(x)
-        elseif transfer == "far"
+        elseif transfer ∈ ("far", "50m")
             Transfer(x)
         else
             error("unidentified experimental setup")
