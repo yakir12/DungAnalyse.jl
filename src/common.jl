@@ -34,7 +34,12 @@ function Transfer(x)
     d, u = split(string(x.metadata.setup[:nest2feeder]))
     nest2feeder = Float64(ustrip(uconvert(Unitful.cm, parse(Int, d)*getfield(Unitful, Symbol(u)))))
     d, u = split(string(x.metadata.setup[:azimuth]))
-    azimuth = Float64(ustrip(uconvert(Unitful.rad, parse(Int, d)*getfield(Unitful, Symbol(u)))))
+    units = try 
+        getfield(Unitful, Symbol(u))
+    catch
+        :°
+    end
+    azimuth = Float64(ustrip(uconvert(Unitful.rad, parse(Int, d)*units)))
     Transfer(feeder, track, pellet, south, north, nest2feeder, azimuth)
 end
 struct TransferNest <: DungMethod
