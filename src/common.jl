@@ -28,6 +28,7 @@ struct Transfer <: DungMethod
     azimuth::Float64
 end
 function _getvalueunit(txt, default)
+    @show txt
     m = match(r"^(\d+)\s*(\w*)$", txt)
     d, u = m.captures
     if isempty(u)
