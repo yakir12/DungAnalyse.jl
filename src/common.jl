@@ -29,7 +29,7 @@ struct Transfer <: DungMethod
 end
 function _getvalueunit(txt, default)
     @show txt
-    m = match(r"^(\d+)\s*(\w*)$", txt)
+    m = match(r"^(\d+)\s*(\D*)", txt)
     d, u = m.captures
     if isempty(u)
         u = default
