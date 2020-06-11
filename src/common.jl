@@ -27,19 +27,20 @@ struct Transfer <: DungMethod
     nest2feeder::Float64
     azimuth::Float64
 end
+function _getvalueunit(txt, default)
+    m = match(r"^(\d+)\s*(\w*)$", txt)
+    d, u = m.captures
+    if isempty(u)
+        u = default
+    end
+    Float64(ustrip(uconvert(Unitful.cm, parse(Int, d)*getfield(Unitful, Symbol(u)))))
+end
 function Transfer(x) 
     feeder, track, pellet = getdata(x.data)
     south = point(x.data[:south])
     north = point(x.data[:north])
-    d, u = split(string(x.metadata.setup[:nest2feeder]))
-    nest2feeder = Float64(ustrip(uconvert(Unitful.cm, parse(Int, d)*getfield(Unitful, Symbol(u)))))
-    d, u = split(string(x.metadata.setup[:azimuth]))
-    units = try 
-        getfield(Unitful, Symbol(u))
-    catch
-        :°
-    end
-    azimuth = Float64(ustrip(uconvert(Unitful.rad, parse(Int, d)*units)))
+    nest2feeder = _getvalueunit(x.metadata.setup[:nest2feeder], "cm")
+    azimuth = _getvalueunit(x.metadata.setup[:azimuth], "°")
     Transfer(feeder, track, pellet, south, north, nest2feeder, azimuth)
 end
 struct TransferNest <: DungMethod
