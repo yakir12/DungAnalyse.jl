@@ -28,20 +28,21 @@ struct Transfer <: DungMethod
     azimuth::Float64
 end
 function _getvalueunit(txt, default)
-    @show txt
     m = match(r"^(\d+)\s*(\D*)", txt)
     d, u = m.captures
-    if isempty(u)
-        u = default
+    u = try
+        getfield(Unitful, Symbol(u))
+    catch
+        default
     end
-    Float64(ustrip(uconvert(Unitful.cm, parse(Int, d)*getfield(Unitful, Symbol(u)))))
+    Float64(ustrip(uconvert(default, parse(Int, d)*u)))
 end
 function Transfer(x) 
     feeder, track, pellet = getdata(x.data)
     south = point(x.data[:south])
     north = point(x.data[:north])
-    nest2feeder = _getvalueunit(x.metadata.setup[:nest2feeder], "cm")
-    azimuth = _getvalueunit(x.metadata.setup[:azimuth], "°")
+    nest2feeder = _getvalueunit(x.metadata.setup[:nest2feeder], u"cm")
+    azimuth = _getvalueunit(x.metadata.setup[:azimuth], u"°")
     Transfer(feeder, track, pellet, south, north, nest2feeder, azimuth)
 end
 struct TransferNest <: DungMethod
