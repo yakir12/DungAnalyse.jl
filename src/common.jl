@@ -29,9 +29,11 @@ struct Transfer <: DungMethod
 end
 function _getvalueunit(txt, default)
     m = match(r"^(\d+)\s*(\D*)", txt)
-    d, u = m.captures
+    d, txtu = m.captures
     u = try
-        getfield(Unitful, Symbol(u))
+        _u = getfield(Unitful, Symbol(txtu))
+        @assert _u isa Unitful.FreeUnits
+        _u
     catch
         default
     end
