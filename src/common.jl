@@ -137,6 +137,21 @@ function Daway(x)
     initialfeeder = point(x.data[:initialfeeder])
     Daway(feeder, nest, track, pellet, initialfeeder)
 end
+struct Displacement <: DungMethod
+    feeder::Point
+    nest::Point
+    track::Track
+    pellet::PointCollection
+    pickup::Point
+    dropoff::Point
+end
+function Displacement(x) 
+    feeder, track, pellet = getdata(x.data)
+    nest = point(x.data[:nest])
+    pickup = point(x.data[:pickup])
+    dropoff = point(x.data[:dropoff])
+    Displacement(feeder, nest, track, pellet, pickup, dropoff)
+end
 
 ######################### DungMethod methods ###########
 
@@ -164,6 +179,8 @@ function DungMethod(x, displace_location, displace_direction, transfer::Missing,
         end
     elseif displace_location == "nest"
         DawayNest(x)
+    elseif displace_location == "halfway"
+        Displacement(x)
     else
         error("unidentified experimental setup")
     end
@@ -234,6 +251,12 @@ function common(x::Daway)
     Common(x.feeder, nest, x.track, x.pellet, originalnest)
 end
 
+function common(x::Displacement)
+    v = x.dropoff - x.pickup
+    originalnest = x.nest
+    nest = originalnest + v
+    Common(x.feeder, nest, x.track, x.pellet, originalnest)
+end
 ######################### END ######################
 
 common(x) = common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
