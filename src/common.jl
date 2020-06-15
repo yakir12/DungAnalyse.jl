@@ -1,32 +1,94 @@
 using Unitful, Statistics, StaticArrays, Rotations, CoordinateTransformations
 
-function getdata(x)
-    track = Track(x[:track])
-    feeder = point(get(x, :feeder, x[:track].data[1,1:2]))
-    pellet = pointcollection(get(x, :pellet, missing), x[:track].data[1,3])
-    feeder, track, pellet
+function getdata(data)
+    feeder = point(get(data, :feeder, missing))
+    nest = point(get(data, :nest, missing))
+    track = Track(data[:track])
+    pellet = pointcollection(get(data, :pellet, missing), data[:track].data[1,3])
+    feeder, nest, track, pellet
 end
-abstract type DungMethod end
-struct ClosedNest <: DungMethod 
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
+
+function common(x)
+    feeder, nest, track, pellet = getdata(x.data)
+    fictive_nest = getfictive_nest(x, feeder, nest)
+    Common(feeder, nest, track, pellet, fictive_nest)
 end
-function ClosedNest(x) 
-    feeder, track, pellet = getdata(x.data)
-    nest = point(x.data[:nest])
-    ClosedNest(feeder, nest, track, pellet)
+
+function getfictive_nest(x, feeder::Point, nest::Missing)
+    south = point(x.data[:south])
+    north = point(x.data[:north])
+    nest2feeder = getnest2feeder(x)
+    azimuth = getazimuth(x)
+    v = north - south
+    α = atan(v[2], v[1]) + azimuth - π
+    u = Point(cos(α), sin(α))
+    return feeder + u*nest2feeder
 end
-struct Transfer <: DungMethod
-    feeder::Point
-    track::Track
-    pellet::PointCollection
-    south::Point
-    north::Point
-    nest2feeder::Float64
-    azimuth::Float64
+
+function getfictive_nest(x, feeder::Missing, nest::Point)
+    dropoff = getdropoff(x.data)
+    pickup = getfeeder(point(x.data[:guess]), convert_displacement(x.metadata.setup[:displacement]), nest, dropoff, getnest2feeder(x))
+    v = dropoff - pickup
+    return nest + v
 end
+
+function getfictive_nest(x, feeder::Point, nest::Point)
+    pickup = getpickup(x.data)
+    ismissing(pickup) && return nest
+    dropoff = getdropoff(x.data)
+    v = dropoff - pickup
+    return nest + v
+end
+
+function convert_displacement(d)
+    m = match(r"\((.+),(.+)\)", d)
+    x, y = parse.(Int, m.captures)
+    point(x, y)
+end
+
+function calculatec(guess, displacement, nest, dropoff)
+    v = dropoff - nest
+    α = π/2 - atan(v[2], v[1])
+    t = LinearMap(Angle2d(α)) ∘ Translation(-nest)
+    ṫ = inv(t)
+    ab = norm(displacement)
+    bc, ac = displacement
+    cy = (ab^2 + ac^2 - bc^2)/2ab
+    Δ = sqrt(ac^2 - cy^2)
+    c = [ṫ([i*Δ, cy]) for i in (-1, 1)]
+    l = norm.(c .- Ref(guess))
+    _, i = findmin(l)
+    c[i]
+end
+
+function getfeeder(guess, displacement, nest, dropoff, nest2feeder)
+    c = calculatec(guess, displacement, nest, dropoff)
+    u = normalize(nest - c)
+    nest + nest2feeder*u
+end
+
+getpickup(d) = haskey(d, :pickup) ? point(d[:pickup]) : 
+               haskey(d, :initialfeeder) ? point(d[:initialfeeder]) : 
+               haskey(d, :rightdowninitial) ? mean(point(d[k]) for k in (:rightdowninitial, :leftdowninitial, :rightupinitial, :leftupinitial)) :
+               missing
+getdropoff(d) = haskey(d, :dropoff) ? point(d[:dropoff]) : 
+                haskey(d, :rightdownfinal) ? mean(point(d[k]) for k in (:rightdownfinal, :leftdownfinal, :rightupfinal, :leftupfinal)) :
+                haskey(d, :feeder) ? point(d[:feeder]) : 
+                missing
+
+getnest2feeder(x) = haskey(x.data, :nestbefore) ? norm(x.data[:nestbefore] - x.data[:feederbefore]) :
+                    haskey(x.metadata.setup, :nest2feeder) ?  _getvalueunit(x.metadata.setup[:nest2feeder], u"cm") :
+                    missing
+function anglebetween(north, south, nest, feeder)
+    v = normalize(north - south)
+    u = normalize(nest - feeder)
+    acos(v ⋅ u)
+    # atan(v[2], v[1]) - atan(u[2], u[1])
+end
+getazimuth(x) = haskey(x.data, :southbefore) ? anglebetween(x.data[:northbefore], x.data[:southbefore], x.data[:nestbefore], x.data[:feederbefore]) :
+                haskey(x.metadata.setup, :azimuth) ?  _getvalueunit(x.metadata.setup[:azimuth], u"°") :
+                    missing
+                    
 function _getvalueunit(txt, default)
     m = match(r"^(\d+)\s*(\D*)", txt)
     d, txtu = m.captures
@@ -39,227 +101,12 @@ function _getvalueunit(txt, default)
     end
     Float64(ustrip(uconvert(default, parse(Int, d)*u)))
 end
-function Transfer(x) 
-    feeder, track, pellet = getdata(x.data)
-    south = point(x.data[:south])
-    north = point(x.data[:north])
-    nest2feeder = _getvalueunit(x.metadata.setup[:nest2feeder], u"cm")
-    azimuth = _getvalueunit(x.metadata.setup[:azimuth], u"°")
-    Transfer(feeder, track, pellet, south, north, nest2feeder, azimuth)
-end
-struct TransferNest <: DungMethod
-    feeder::Point
-    track::Track
-    pellet::PointCollection
-    south::Point
-    north::Point
-    nest2feeder::Float64
-    azimuth::Float64
-    originalnest::Point
-end
-function TransferNest(x) 
-    y = Transfer(x)
-    originalnest = point(x.data[:originalnest])
-    TransferNest(y.feeder, y.track, y.pellet, y.south, y.north, y.nest2feeder, y.azimuth, originalnest)
-end
-Transfer(x::TransferNest) = Transfer(x.feeder, x.track, x.pellet, x.south, x.north, x.nest2feeder, x.azimuth)
-struct TransferNestBelen <: DungMethod 
-    feeder::Point
-    track::Track
-    pellet::PointCollection
-    southbefore::Point
-    northbefore::Point
-    feederbefore::Point
-    nestbefore::Point
-    south::Point
-    north::Point
-end
-function TransferNestBelen(x) 
-    feeder, track, pellet = getdata(x.data)
-    southbefore = point(x.data[:southbefore])
-    northbefore = point(x.data[:northbefore])
-    feederbefore = point(x.data[:feederbefore])
-    nestbefore = point(x.data[:nestbefore])
-    south = point(x.data[:south])
-    north = point(x.data[:north])
-    TransferNestBelen(feeder, track, pellet, rightdowninitial, leftdowninitial, rightupinitial, leftupinitial, rightdownfinal, leftdownfinal, rightupfinal, leftupfinal)
-end
-struct DawaySandpaper <: DungMethod
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
-    rightdowninitial::Point
-    leftdowninitial::Point
-    rightupinitial::Point
-    leftupinitial::Point
-    rightdownfinal::Point
-    leftdownfinal::Point
-    rightupfinal::Point
-    leftupfinal::Point
-end
-function DawaySandpaper(x) 
-    feeder, track, pellet = getdata(x.data)
-    nest = point(x.data[:nest])
-    rightdowninitial = point(x.data[:rightdowninitial])
-    leftdowninitial = point(x.data[:leftdowninitial])
-    rightupinitial = point(x.data[:rightupinitial])
-    leftupinitial = point(x.data[:leftupinitial])
-    rightdownfinal = point(x.data[:rightdownfinal])
-    leftdownfinal = point(x.data[:leftdownfinal])
-    rightupfinal = point(x.data[:rightupfinal])
-    leftupfinal = point(x.data[:leftupfinal])
-    DawaySandpaper(feeder, nest, track, pellet, rightdowninitial, leftdowninitial, rightupinitial, leftupinitial, rightdownfinal, leftdownfinal, rightupfinal, leftupfinal)
-end
-struct DawayNest <: DungMethod
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
-    pickup::Point
-end
-function DawayNest(x) 
-    feeder, track, pellet = getdata(x.data)
-    nest = point(x.data[:nest])
-    pickup = point(x.data[:pickup])
-    DawayNest(feeder, nest, track, pellet, pickup)
-end
-struct Daway <: DungMethod
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
-    initialfeeder::Point
-end
-function Daway(x) 
-    feeder, track, pellet = getdata(x.data)
-    nest = point(x.data[:nest])
-    initialfeeder = point(x.data[:initialfeeder])
-    Daway(feeder, nest, track, pellet, initialfeeder)
-end
-struct Displacement <: DungMethod
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
-    pickup::Point
-    dropoff::Point
-end
-function Displacement(x) 
-    feeder, track, pellet = getdata(x.data)
-    nest = point(x.data[:nest])
-    pickup = point(x.data[:pickup])
-    dropoff = point(x.data[:dropoff])
-    Displacement(feeder, nest, track, pellet, pickup, dropoff)
-end
 
 ######################### DungMethod methods ###########
 
-DungMethod(x, displace_location, displace_direction::Missing, transfer::Missing, nest_coverage::Missing) = error("unidentified experimental setup")
-DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer::Missing, nest_coverage) = ClosedNest(x)
-function DungMethod(x, displace_location::Missing, displace_direction::Missing, transfer, nest_coverage)
-    if x.metadata.setup[:person] == "belen"
-        TransferNestBelen(x)
-    else
-        if transfer == "back"
-            TransferNest(x)
-        elseif transfer ∈ ("far", "50m")
-            Transfer(x)
-        else
-            error("unidentified experimental setup")
-        end
-    end
-end
-function DungMethod(x, displace_location, displace_direction, transfer::Missing, nest_coverage) 
-    if displace_location == "feeder"
-        if x.metadata.setup[:person] == "belen" 
-            DawaySandpaper(x) 
-        else
-            Daway(x)
-        end
-    elseif displace_location == "nest"
-        DawayNest(x)
-    elseif displace_location == "halfway"
-        Displacement(x)
-    else
-        error("unidentified experimental setup")
-    end
-end
+# common(x) = Common(x)
 
-######################### Common methods ###########
-
-#=mutable struct Common{N}
-    feeder::Point
-    nest::Point
-    track::Track
-    pellet::PointCollection
-    originalnest::N
-end=#
-common(x::ClosedNest) = Common(x.feeder, x.nest, x.track, x.pellet, x.nest)
-# nest(x::Common) = x.nest
-# turning(x::Common) = x.track.homing[end]
-# originalnest(x::Common) = x.originalnest
-
-function common(x::TransferNestBelen)
-    v = x.northbefore - x.southbefore
-    u = x.nestbefore - x.feederbefore 
-    azimuth = atan(v[2], v[1]) - atan(u[2], u[1])
-    nest2feeder = norm(x.nestbefore - x.feederbefore)
-    v = x.north - x.south
-    α = atan(v[2], v[1]) + azimuth
-    u = Point(cos(α), sin(α))
-    nest = x.feeder + u*nest2feeder
-    Common(x.feeder, nest, x.track, x.pellet, missing)
-end
-
-function common(x::Transfer)
-    v = x.north - x.south
-    α = atan(v[2], v[1]) + x.azimuth - π
-    u = Point(cos(α), sin(α))
-    nest = x.feeder + u*x.nest2feeder
-    Common(x.feeder, nest, x.track, x.pellet, missing)
-end
-
-function common(x::TransferNest)
-    y = common(Transfer(x))
-    Common(y.feeder, y.nest, y.track, y.pellet, x.originalnest)
-end
-
-function common(x::DawaySandpaper)
-    originalnest = x.nest
-    initial = mean(getproperty(x, k) for k in [:rightdowninitial, :leftdowninitial, :rightupinitial, :leftupinitial])
-    final = mean(getproperty(x, k) for k in [:rightdownfinal, :leftdownfinal, :rightupfinal, :leftupfinal])
-    v = final - initial
-    nest = originalnest + v
-    _feeder = x.feeder
-    feeder = _feeder + v
-    Common(feeder, nest, x.track, x.pellet, originalnest)
-end
-
-function common(x::DawayNest)
-    originalnest = x.nest
-    feeder = x.feeder
-    v = originalnest - x.pickup
-    nest = feeder + v
-    Common(feeder, nest, x.track, x.pellet, originalnest)
-end
-
-function common(x::Daway)
-    originalnest = x.nest
-    v = x.feeder - x.initialfeeder
-    nest = originalnest + v
-    Common(x.feeder, nest, x.track, x.pellet, originalnest)
-end
-
-function common(x::Displacement)
-    v = x.dropoff - x.pickup
-    originalnest = x.nest
-    nest = originalnest + v
-    Common(x.feeder, nest, x.track, x.pellet, originalnest)
-end
 ######################### END ######################
-
-common(x) = common(DungMethod(x, get(x.metadata.setup, :displace_location, missing), get(x.metadata.setup, :displace_direction, missing), get(x.metadata.setup, :transfer, missing), get(x.metadata.setup, :nest_coverage, missing)))
 
 function get_rotation(nest, feeder)
     v = feeder - nest
