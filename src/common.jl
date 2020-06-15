@@ -63,7 +63,9 @@ end
 
 function getfeeder(guess, displacement, nest, dropoff, nest2feeder)
     c = calculatec(guess, displacement, nest, dropoff)
+    @show guess, c
     u = normalize(nest - c)
+    @show nest2feeder
     nest + nest2feeder*u
 end
 
