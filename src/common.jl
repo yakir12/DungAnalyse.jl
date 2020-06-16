@@ -1,43 +1,71 @@
-using Unitful, Statistics, StaticArrays, Rotations, CoordinateTransformations
+using Unitful, Statistics, StaticArrays, Rotations, CoordinateTransformations, LinearAlgebra
+
+getfeeder(data) = get(data, :initialfeeder, get(data, :feeder, missing))
+
+getnest(data) = get(data, :nest, missing)
+
+getpickup(data, ::Missing, _) = missing
+getpickup(data, _, ::Missing) = missing
+getpickup(data, _, feeder) = haskey(data, :rightdowninitial) ? mean(point(data[k]) for k in (:rightdowninitial, :leftdowninitial, :rightupinitial, :leftupinitial)) : get(data, :initialfeeder, get(data, :pickup, feeder))
+
+getdropoff(data, ::Nothing) = nothing
+getdropoff(data, _) = haskey(data, :rightdownfinal) ? mean(point(data[k]) for k in (:rightdownfinal, :leftdownfinal, :rightupfinal, :leftupfinal)) : get(data, :dropoff, get(data, :feeder, missing))
+
+getnest2feeder(x) = haskey(x.data, :nestbefore) ? norm(x.data[:nestbefore] - x.data[:feederbefore]) :
+                    haskey(x.metadata.setup, :nest2feeder) ?  _getvalueunit(x.metadata.setup[:nest2feeder], u"cm") :
+                    missing
 
 function getdata(data)
-    feeder = point(get(data, :feeder, missing))
-    nest = point(get(data, :nest, missing))
+    feeder = point(getfeeder(data))
+    nest = point(getnest(data))
     track = Track(data[:track])
     pellet = pointcollection(get(data, :pellet, missing), data[:track].data[1,3])
-    feeder, nest, track, pellet
+    pickup = point(getpickup(data, nest, feeder))
+    dropoff = point(getdropoff(data, pickup))
+    feeder, nest, track, pellet, pickup, dropoff
 end
 
 function common(x)
-    feeder, nest, track, pellet = getdata(x.data)
-    fictive_nest = getfictive_nest(x, feeder, nest)
-    Common(feeder, nest, track, pellet, fictive_nest)
+    feeder, nest, track, pellet, pickup, dropoff = getdata(x.data)
+    nest2feeder = getnest2feeder(x)
+    fictive_nest = getfictive_nest(x, pickup, nest, dropoff, nest2feeder)
+    feeder, nest, track, pellet, fictive_nest, pickup, dropoff = fix(feeder, nest, track, pellet, fictive_nest, pickup, dropoff, nest2feeder)
+    Common(feeder, nest, track, pellet, fictive_nest, pickup, dropoff)
 end
 
-function getfictive_nest(x, feeder::Point, nest::Missing)
+getfictive_nest(x, pickup::Nothing, nest::Point, dropoff::Nothing, _) = nest
+getfictive_nest(x, pickup::Point, nest::Point, dropoff::Point, _) = nest + dropoff - pickup
+function getfictive_nest(x, pickup::Missing, nest::Missing, dropoff::Point, nest2feeder)
     south = point(x.data[:south])
     north = point(x.data[:north])
-    nest2feeder = getnest2feeder(x)
-    azimuth = getazimuth(x)
     v = north - south
+    azimuth = getazimuth(x)
     α = atan(v[2], v[1]) + azimuth - π
     u = Point(cos(α), sin(α))
-    return feeder + u*nest2feeder
+    return dropoff + u*nest2feeder
+end
+function getfictive_nest(x, pickup::Missing, nest::Point, dropoff::Point, nest2feeder)
+    c = calculatec(point(x.data[:guess]), convert_displacement(x.metadata.setup[:displacement]), nest, dropoff)
+    u = normalize(c - nest)
+    return dropoff + nest2feeder*u
 end
 
-function getfictive_nest(x, feeder::Missing, nest::Point)
-    dropoff = getdropoff(x.data)
-    pickup = getfeeder(point(x.data[:guess]), convert_displacement(x.metadata.setup[:displacement]), nest, dropoff, getnest2feeder(x))
-    v = dropoff - pickup
-    return nest + v
-end
-
-function getfictive_nest(x, feeder::Point, nest::Point)
-    pickup = getpickup(x.data)
-    ismissing(pickup) && return nest
-    dropoff = getdropoff(x.data)
-    v = dropoff - pickup
-    return nest + v
+fix(feeder, nest::Missing, track, pellet, fictive_nest, pickup, dropoff, nest2feeder) = (feeder, nest, track, pellet, fictive_nest, pickup, dropoff)
+fix(feeder::Missing, nest, track, pellet, fictive_nest, pickup, dropoff, nest2feeder) = (feeder, nest, track, pellet, fictive_nest, pickup, dropoff)
+function fix(feeder, nest, track, pellet, fictive_nest, pickup, dropoff, nest2feeder)
+    nest2feeder2 = norm(nest - feeder)
+    if abs(nest2feeder2 - nest2feeder) > 20
+        @info "calculated distance between nest and feeder is more than 20 cm different than the reported distance; applying a correction"
+        r = nest2feeder/nest2feeder2
+        feeder *= r
+        nest *= r
+        track.coords .*= r
+        pellet.xy .*= r
+        fictive_nest *= r
+        pickup *= r
+        dropoff *= r
+    end
+    return feeder, nest, track, pellet, fictive_nest, pickup, dropoff
 end
 
 function convert_displacement(d)
@@ -52,35 +80,15 @@ function calculatec(guess, displacement, nest, dropoff)
     t = LinearMap(Angle2d(α)) ∘ Translation(-nest)
     ṫ = inv(t)
     ab = norm(displacement)
-    bc, ac = displacement
-    cy = (ab^2 + ac^2 - bc^2)/2ab
-    Δ = sqrt(ac^2 - cy^2)
+    bc², ac² = displacement.^2
+    cy = (ab^2 + ac² - bc²)/2ab
+    Δ = sqrt(ac² - cy^2)
     c = [ṫ([i*Δ, cy]) for i in (-1, 1)]
     l = norm.(c .- Ref(guess))
     _, i = findmin(l)
     c[i]
 end
 
-function getfeeder(guess, displacement, nest, dropoff, nest2feeder)
-    c = calculatec(guess, displacement, nest, dropoff)
-    @show guess, c
-    u = normalize(nest - c)
-    @show nest2feeder
-    nest + nest2feeder*u
-end
-
-getpickup(d) = haskey(d, :pickup) ? point(d[:pickup]) : 
-               haskey(d, :initialfeeder) ? point(d[:initialfeeder]) : 
-               haskey(d, :rightdowninitial) ? mean(point(d[k]) for k in (:rightdowninitial, :leftdowninitial, :rightupinitial, :leftupinitial)) :
-               missing
-getdropoff(d) = haskey(d, :dropoff) ? point(d[:dropoff]) : 
-                haskey(d, :rightdownfinal) ? mean(point(d[k]) for k in (:rightdownfinal, :leftdownfinal, :rightupfinal, :leftupfinal)) :
-                haskey(d, :feeder) ? point(d[:feeder]) : 
-                missing
-
-getnest2feeder(x) = haskey(x.data, :nestbefore) ? norm(x.data[:nestbefore] - x.data[:feederbefore]) :
-                    haskey(x.metadata.setup, :nest2feeder) ?  _getvalueunit(x.metadata.setup[:nest2feeder], u"cm") :
-                    missing
 function anglebetween(north, south, nest, feeder)
     v = normalize(north - south)
     u = normalize(nest - feeder)
@@ -91,7 +99,8 @@ getazimuth(x) = haskey(x.data, :southbefore) ? anglebetween(x.data[:northbefore]
                 haskey(x.metadata.setup, :azimuth) ?  _getvalueunit(x.metadata.setup[:azimuth], u"°") :
                     missing
                     
-function _getvalueunit(txt, default)
+_getvalueunit(x::Real, default) = Float64(x)
+function _getvalueunit(txt::AbstractString, default)
     m = match(r"^(\d+)\s*(\D*)", txt)
     d, txtu = m.captures
     u = try
@@ -103,10 +112,6 @@ function _getvalueunit(txt, default)
     end
     Float64(ustrip(uconvert(default, parse(Int, d)*u)))
 end
-
-######################### DungMethod methods ###########
-
-# common(x) = Common(x)
 
 ######################### END ######################
 
