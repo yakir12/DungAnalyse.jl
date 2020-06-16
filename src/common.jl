@@ -54,8 +54,8 @@ fix(feeder, nest::Missing, track, pellet, fictive_nest, pickup, dropoff, nest2fe
 fix(feeder::Missing, nest, track, pellet, fictive_nest, pickup, dropoff, nest2feeder) = (feeder, nest, track, pellet, fictive_nest, pickup, dropoff)
 function fix(feeder, nest, track, pellet, fictive_nest, pickup, dropoff, nest2feeder)
     nest2feeder2 = norm(nest - feeder)
-    if abs(nest2feeder2 - nest2feeder) > 20
-        @info "calculated distance between nest and feeder is more than 20 cm different than the reported distance; applying a correction"
+    if abs(nest2feeder2 - nest2feeder) > 10
+        @info "calculated distance between nest and feeder is more than 10 cm different than the reported distance; applying a correction"
         r = nest2feeder/nest2feeder2
         feeder *= r
         nest *= r
