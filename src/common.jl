@@ -71,7 +71,7 @@ end
 function convert_displacement(d)
     m = match(r"\((.+),(.+)\)", d)
     x, y = parse.(Int, m.captures)
-    point(x, y)
+    Point(x, y)
 end
 
 function calculatec(guess, displacement, nest, dropoff)
