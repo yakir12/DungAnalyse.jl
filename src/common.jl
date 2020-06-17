@@ -6,8 +6,8 @@ function getmissingfeeder(guess, displacement, nest, dropoff, nest2feeder)
     return nest + nest2feeder*u
 end
 
-getfeeder(x, nest, dropoff, nest2feeder) = haskey(x.data, :initialfeeder) ? x.data[:initialfeeder] :
-                  haskey(x.data, :feeder) ? x.data[:feeder] :
+getfeeder(x, nest, dropoff, nest2feeder) = haskey(x.data, :initialfeeder) ? point(x.data[:initialfeeder]) :
+haskey(x.data, :feeder) ? point(x.data[:feeder]) :
                   getmissingfeeder(point(x.data[:guess]), convert_displacement(x.metadata.setup[:displacement]), nest, dropoff, nest2feeder)
 
 getnest(data) = get(data, :nest, missing)
@@ -32,7 +32,7 @@ function getdata(x)
     pellet = pointcollection(get(x.data, :pellet, missing), x.data[:track].data[1,3])
     dropoff = point(getdropoff(x.data))
     nest2feeder = getnest2feeder(x)
-    feeder = point(getfeeder(x, nest, dropoff, nest2feeder))
+    feeder = getfeeder(x, nest, dropoff, nest2feeder)
     pickup = point(getpickup(x.data, nest, feeder))
     feeder, nest, track, pellet, pickup, dropoff, nest2feeder
 end
