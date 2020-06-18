@@ -63,7 +63,6 @@ function spawnmatlab(targetname, check, intrinsic, extrinsic)
 end
 
 function spawnmatlab(targetname, check, extrinsic)
-    @show targetname, check, extrinsic
     mat"""
     warning('off','all')
     [imagePoints, boardSize] = detectCheckerboardPoints($extrinsic);
