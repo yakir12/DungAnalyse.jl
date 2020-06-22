@@ -29,6 +29,9 @@ getnest2feeder(x) = haskey(x.data, :nestbefore) ? norm(x.data[:nestbefore] - x.d
 function getdata(x)
     nest = point(getnest(x.data))
     track = Track(x.data[:track])
+    if haskey(x.metadata.setup, :turningpoint)
+        track.tp = x.metadata.setup[:turningpoint]
+    end
     pellet = pointcollection(get(x.data, :pellet, missing), x.data[:track].data[1,3])
     dropoff = point(getdropoff(x.data))
     nest2feeder = getnest2feeder(x)
@@ -66,6 +69,7 @@ function fix(feeder, nest, track, pellet, fictive_nest, pickup, dropoff, nest2fe
         feeder *= r
         nest *= r
         track.coords .*= r
+        track.rawcoords.xy .*= r
         pellet.xy .*= r
         fictive_nest *= r
         pickup *= r
